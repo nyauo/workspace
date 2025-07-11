@@ -68,7 +68,7 @@ function main()
         params = initializeParameters(data_V, data_JD, config);
     end
     
-    % 执行拟合
+    % 执行拟合，performFitting 内部会按电压区域调用子函数逐步优化
     [optimized_params, fit_results] = performFitting(data_V, data_JD, params, config);
     
     % 计算各分量电流

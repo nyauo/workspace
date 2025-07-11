@@ -252,9 +252,12 @@ function [optimized_params, fit_results] = performFitting(data_V, data_JD, param
         
         % 比较两种算法结果，选择较好的一个
         fprintf('\n比较两种算法的结果：\n');
-        fprintf('Levenberg-Marquardt: 平均相对误差 = %.2f%%\n', mean(relative_errors_lm));
-        fprintf('Trust-Region-Reflective: 平均相对误差 = %.2f%%\n', mean(relative_errors_tr));
-        
+        %fprintf('Levenberg-Marquardt: 平均相对误差 = %.2f%%\n', mean(relative_errors_lm));
+        %fprintf('Trust-Region-Reflective: 平均相对误差 = %.2f%%\n', mean(relative_errors_tr));
+        nz_idx = data_V ~= 0;
+        fprintf('Levenberg-Marquardt: 平均相对误差 = %.2f%%\n', mean(relative_errors_lm(nz_idx)));
+        fprintf('Trust-Region-Reflective: 平均相对误差 = %.2f%%\n', mean(relative_errors_tr(nz_idx)));
+
         % 检查各电压区域的拟合效果
         neg_idx = find(data_V < 0);
         pos_idx = find(data_V > 0);
@@ -273,7 +276,8 @@ function [optimized_params, fit_results] = performFitting(data_V, data_JD, param
             mean(neg_err_tr), mean(pos_err_tr));
         
         % 自适应选择更好的算法结果
-        if mean(relative_errors_lm) < mean(relative_errors_tr)
+        %if mean(relative_errors_lm) < mean(relative_errors_tr)
+        if mean(relative_errors_lm(nz_idx)) < mean(relative_errors_tr(nz_idx))
             fprintf('整体表现更好: Levenberg-Marquardt算法\n');
             optimized_params = optimized_params_lm;
             fit_results.JD = fit_results_lm.JD;
@@ -376,8 +380,9 @@ function [optimized_params, fit_results] = performFitting(data_V, data_JD, param
         
         % 输出误差统计信息
         fprintf('\n每个点的相对误差统计：\n');
-        fprintf('最大相对误差: %.2f%%\n', max(relative_errors));
+        %fprintf('最大相对误差: %.2f%%\n', max(relative_errors));
         fprintf('平均相对误差: %.2f%%\n', mean(relative_errors));
+        fprintf('平均相对误差: %.2f%%\n', mean(relative_errors(nz_idx)));
         fprintf('中位相对误差: %.2f%%\n', median(relative_errors));
         fprintf('负电压区域平均相对误差: %.2f%%\n', mean(neg_errors));
         

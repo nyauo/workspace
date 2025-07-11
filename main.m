@@ -119,9 +119,13 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
     end
     
     % 计算初始拟合和误差
-    fit_results.JD = diodeModel(data_V, adjusted_params, config);
+    %fit_results.JD = diodeModel(data_V, adjusted_params, config);
+    currents = calculateCurrents(data_V, adjusted_params, config);
+    fit_results.JD = currents.total;
     errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
-    
+    nz_idx = data_V ~= 0;
+    avg_error = mean(errors(nz_idx));
+
     % 创建实时更新的图表
     figure('Name', '交互式参数调整', 'Position', [100, 100, 1200, 800]);
     
@@ -129,7 +133,11 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
     subplot(2,1,1);
     h_data = semilogy(data_V, abs(data_JD), 'bo', 'DisplayName', '测量数据');
     hold on;
-    h_fit = semilogy(data_V, abs(fit_results.JD), 'ro', 'DisplayName', '拟合结果');
+    %h_fit = semilogy(data_V, abs(fit_results.JD), 'ro', 'DisplayName', '拟合结果');
+    h_fit = semilogy(data_V, abs(currents.total), 'ro', 'DisplayName', '拟合结果');
+    h_diode = semilogy(data_V, abs(currents.diode), 'b--', 'DisplayName', '二极管电流');
+    h_ohmic = semilogy(data_V, abs(currents.ohmic), 'g--', 'DisplayName', '欧姆电流');
+    h_nonohmic = semilogy(data_V, abs(currents.nonohmic), 'm--', 'DisplayName', '非欧姆电流');
     xlabel('电压 (V)');
     ylabel('电流密度 (A)');
     title('电流-电压特性 (对数尺度)');
@@ -140,7 +148,8 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
     h_error = plot(data_V, errors, 'b.-');
     xlabel('电压 (V)');
     ylabel('相对误差 (%)');
-    title(sprintf('拟合误差 (平均: %.2f%%)', mean(errors)));
+    %title(sprintf('拟合误差 (平均: %.2f%%)', mean(errors)));
+    title(sprintf('拟合误差 (平均: %.2f%%)', avg_error));
     grid on;
     
     % 显示当前参数值
@@ -154,7 +163,7 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
         % 显示调整选项
         fprintf('\n当前参数: J0=%.2e, Rs=%.2e, Rsh=%.2e, k=%.2e\n', ...
             adjusted_params(1), adjusted_params(2), adjusted_params(3), adjusted_params(4));
-        fprintf('平均相对误差: %.2f%%\n', mean(errors));
+        fprintf('平均相对误差: %.2f%%\n', avg_error);
         fprintf('\n参数调整选项:\n');
         fprintf('1: 增加 J0  2: 减少 J0\n');
         fprintf('3: 增加 Rs  4: 减少 Rs\n');
@@ -218,14 +227,22 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
             end
             
             % 重新计算拟合和误差
-            fit_results.JD = diodeModel(data_V, adjusted_params, config);
+            %fit_results.JD = diodeModel(data_V, adjusted_params, config);
+            currents = calculateCurrents(data_V, adjusted_params, config);
+            fit_results.JD = currents.total;
             errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
             
+            avg_error = mean(errors(nz_idx));
+
             % 更新图表
-            set(h_fit, 'YData', abs(fit_results.JD));
+            %set(h_fit, 'YData', abs(fit_results.JD));
+            set(h_fit, 'YData', abs(currents.total));
+            set(h_diode, 'YData', abs(currents.diode));
+            set(h_ohmic, 'YData', abs(currents.ohmic));
+            set(h_nonohmic, 'YData', abs(currents.nonohmic));
             set(h_error, 'YData', errors);
-            title(subplot(2,1,2), sprintf('拟合误差 (平均: %.2f%%)', mean(errors)));
-            
+            %title(subplot(2,1,2), sprintf('拟合误差 (平均: %.2f%%)', mean(errors)));
+            title(subplot(2,1,2), sprintf('拟合误差 (平均: %.2f%%)', avg_error));
             % 更新参数显示
             delete(findall(gcf, 'Type', 'annotation'));
             annotation('textbox', [0.01, 0.01, 0.98, 0.08], ...
@@ -246,7 +263,9 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
     end
     
     % 计算最终拟合结果
-    fit_results.JD = diodeModel(data_V, adjusted_params, config);
+    %fit_results.JD = diodeModel(data_V, adjusted_params, config);
+    final_currents = calculateCurrents(data_V, adjusted_params, config);
+    fit_results.JD = final_currents.total;
     fit_results.resnorm = sum(((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)).^2);
 end
 
@@ -315,7 +334,9 @@ function saveResults(data_V, data_JD, params, fit_results, currents)
     
     % 添加误差统计
     fprintf(fid, '拟合误差统计:\n');
-    fprintf(fid, '平均相对误差: %.2f%%\n', mean(rel_errors));
+    %fprintf(fid, '平均相对误差: %.2f%%\n', mean(rel_errors));
+    avg_rel_error = mean(rel_errors(data_V ~= 0));
+    fprintf(fid, '平均相对误差: %.2f%%\n', avg_rel_error);
     fprintf(fid, '最大相对误差: %.2f%%\n', max(rel_errors));
     fprintf(fid, '中位相对误差: %.2f%%\n', median(rel_errors));
     

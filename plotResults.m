@@ -28,6 +28,7 @@ function plotResults(V, JD_measured, fit_results, currents)
     subplot(2,2,3);
     relative_error = abs((currents.total - JD_measured) ./ (abs(JD_measured) + eps)) * 100;
     plot(V, relative_error, 'b.-', 'LineWidth', 1);
+    avg_rel_err = mean(relative_error(V ~= 0));
     xlabel('电压 (V)');
     ylabel('相对误差 (%)');
     title('拟合相对误差');
@@ -50,7 +51,7 @@ function plotResults(V, JD_measured, fit_results, currents)
     % 在图上添加拟合参数信息
     annotation('textbox', [0.02, 0.02, 0.4, 0.05], ...
         'String', sprintf('最大相对误差: %.2f%%  平均相对误差: %.2f%%', ...
-        max(relative_error), mean(relative_error)), ...
+        max(relative_error), avg_rel_err), ...
         'EdgeColor', 'none');
     fprintf('二极管电流占比: %.2f%%\n', mean(abs(currents.diode ./ currents.total)) * 100);
     fprintf('欧姆电流占比: %.2f%%\n', mean(abs(currents.ohmic ./ currents.total)) * 100);

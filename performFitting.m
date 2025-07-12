@@ -33,15 +33,15 @@ function [optimized_params, fit_results] = performFitting(data_V, data_JD, param
             'MaxIterations', 4000);
             
        % 分阶段优化
-        x0_scaled = fit_negative_region(data_V, data_JD, x0_scaled, params, config, options_lm);
-        x0_scaled = fit_positive_region(data_V, data_JD, x0_scaled, params, config, options_lm);
+        [x0_scaled, rel_errors] = fit_negative_region(data_V, data_JD, x0_scaled, params, config, options_lm);
+        [x0_scaled, rel_errors] = fit_positive_region(data_V, data_JD, x0_scaled, params, config, options_lm, rel_errors);
         [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm);
     catch ME
         error('拟合过程出错: %s', ME.message);
     end
 end
 
-function x0_scaled = fit_negative_region(data_V, data_JD, x0_scaled, params, config, options_lm)
+function [x0_scaled, rel_errors] = fit_negative_region(data_V, data_JD, x0_scaled, params, config, options_lm)
     fprintf('\n第一阶段：优化Rsh和非欧姆系数k...\n');
     neg_idx = find(data_V < -0.1);
     if ~isempty(neg_idx)
@@ -49,7 +49,7 @@ function x0_scaled = fit_negative_region(data_V, data_JD, x0_scaled, params, con
         neg_JD = data_JD(neg_idx);
         x0_limited = x0_scaled;
         param_mask = [false, false, true, true];
-        neg_errFun = @(x_opt) errorFunctionPartial(x_opt, x0_limited, param_mask, neg_V, neg_JD, params, config, config.regularization.prior);
+        neg_errFun = @(x_opt) errorFunctionPartial(x_opt, x0_limited, param_mask, neg_V, neg_JD, params, config, config.regularization.prior, []);
         x0_neg_opt = x0_scaled(param_mask);
         lb_neg = params.lb(param_mask) ./ params.scaleFactors(param_mask);
         ub_neg = params.ub(param_mask) ./ params.scaleFactors(param_mask);
@@ -63,9 +63,13 @@ function x0_scaled = fit_negative_region(data_V, data_JD, x0_scaled, params, con
         fprintf('优化后的Rsh = %.6e Ohm\n', x_actual_neg(3));
         fprintf('优化后的k = %.6e\n', x_actual_neg(4));
     end
+    % 计算整个数据集的相对误差供下一阶段使用
+    x_all = x0_scaled .* params.scaleFactors;
+    fit_all = diodeModel(data_V, x_all, config);
+    rel_errors = abs((fit_all - data_JD) ./ (abs(data_JD) + eps));
 end
 
-function x0_scaled = fit_positive_region(data_V, data_JD, x0_scaled, params, config, options_lm)
+function [x0_scaled, rel_errors] = fit_positive_region(data_V, data_JD, x0_scaled, params, config, options_lm, prev_errors)
     fprintf('\n第二阶段：细分正电压区域优化...\n');
     low_pos_idx = find(data_V > 0 & data_V <= 0.15);
     high_pos_idx = find(data_V > 0.15);
@@ -75,12 +79,17 @@ function x0_scaled = fit_positive_region(data_V, data_JD, x0_scaled, params, con
         low_pos_V = data_V(low_pos_idx);
         low_pos_JD = data_JD(low_pos_idx);
         param_mask = [true, false, false, false];
-        low_pos_errFun = @(x_opt) errorFunctionPartial(x_opt, x0_scaled, param_mask, low_pos_V, low_pos_JD, params, config, config.regularization.prior);
+        low_pos_prev = prev_errors(low_pos_idx);
+        low_pos_errFun = @(x_opt) errorFunctionPartial(x_opt, x0_scaled, param_mask, low_pos_V, low_pos_JD, params, config, config.regularization.prior, low_pos_prev);
         x0_low_pos_opt = x0_scaled(param_mask);
         lb_low_pos = params.lb(param_mask) ./ params.scaleFactors(param_mask);
         ub_low_pos = params.ub(param_mask) ./ params.scaleFactors(param_mask);
         [x_low_pos_opt, ~] = runWithMultiStart(low_pos_errFun, x0_low_pos_opt, lb_low_pos, ub_low_pos, options_lm, config.optimization);
         x0_scaled(param_mask) = x_low_pos_opt;
+        % 更新误差供下一小阶段使用
+        x_all = x0_scaled .* params.scaleFactors;
+        fit_all = diodeModel(data_V, x_all, config);
+        prev_errors = abs((fit_all - data_JD) ./ (abs(data_JD) + eps));
         x_actual_low_pos = x0_scaled .* params.scaleFactors;
         fit_JD_low_pos = diodeModel(low_pos_V, x_actual_low_pos, config);
         low_pos_rel_errors = abs((fit_JD_low_pos - low_pos_JD) ./ (abs(low_pos_JD) + eps)) * 100;
@@ -94,12 +103,17 @@ function x0_scaled = fit_positive_region(data_V, data_JD, x0_scaled, params, con
         high_pos_V = data_V(high_pos_idx);
         high_pos_JD = data_JD(high_pos_idx);
         param_mask = [false, true, false, false];
-        high_pos_errFun = @(x_opt) errorFunctionPartial(x_opt, x0_scaled, param_mask, high_pos_V, high_pos_JD, params, config, config.regularization.prior);
+        high_pos_prev = prev_errors(high_pos_idx);
+        high_pos_errFun = @(x_opt) errorFunctionPartial(x_opt, x0_scaled, param_mask, high_pos_V, high_pos_JD, params, config, config.regularization.prior, high_pos_prev);
         x0_high_pos_opt = x0_scaled(param_mask);
         lb_high_pos = params.lb(param_mask) ./ params.scaleFactors(param_mask);
         ub_high_pos = params.ub(param_mask) ./ params.scaleFactors(param_mask);
         [x_high_pos_opt, ~] = runWithMultiStart(high_pos_errFun, x0_high_pos_opt, lb_high_pos, ub_high_pos, options_lm, config.optimization);
         x0_scaled(param_mask) = x_high_pos_opt;
+        % 更新误差供下一小阶段使用
+        x_all = x0_scaled .* params.scaleFactors;
+        fit_all = diodeModel(data_V, x_all, config);
+        prev_errors = abs((fit_all - data_JD) ./ (abs(data_JD) + eps));
         if x0_scaled(2) * params.scaleFactors(2) <= 0
             fprintf('警告: Rs为负值或零，正在调整为正值\n');
             x0_scaled(2) = params.lb(2) / params.scaleFactors(2);
@@ -119,7 +133,8 @@ function x0_scaled = fit_positive_region(data_V, data_JD, x0_scaled, params, con
         pos_V = data_V(pos_idx);
         pos_JD = data_JD(pos_idx);
         param_mask = [true, true, false, false];
-        pos_errFun = @(x_opt) errorFunctionPartial(x_opt, x0_scaled, param_mask, pos_V, pos_JD, params, config, config.regularization.prior);
+        pos_prev = prev_errors(pos_idx);
+        pos_errFun = @(x_opt) errorFunctionPartial(x_opt, x0_scaled, param_mask, pos_V, pos_JD, params, config, config.regularization.prior, pos_prev);
         x0_pos_opt = x0_scaled(param_mask);
         lb_pos = params.lb(param_mask) ./ params.scaleFactors(param_mask);
         ub_pos = params.ub(param_mask) ./ params.scaleFactors(param_mask);
@@ -138,6 +153,10 @@ function x0_scaled = fit_positive_region(data_V, data_JD, x0_scaled, params, con
         fprintf('优化后的J0 = %.6e A\n', x_actual_pos(1));
         fprintf('优化后的Rs = %.6e Ohm\n', x_actual_pos(2));
     end
+    % 计算整个数据集的相对误差供下一阶段使用
+    x_all = x0_scaled .* params.scaleFactors;
+    fit_all = diodeModel(data_V, x_all, config);
+    rel_errors = abs((fit_all - data_JD) ./ (abs(data_JD) + eps));    
 end
 
 function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm, attempt)
@@ -257,7 +276,7 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     if mean(pos_errors) > 2*mean(neg_errors) && mean(pos_errors) > 10
         fprintf('\n正区域拟合效果较差，尝试单独优化正区域参数...\n');
         param_mask = [true, true, false, false];
-        pos_errFun = @(x_opt) errorFunctionEnhancedPositive(x_opt, optimized_params ./ params.scaleFactors, param_mask, data_V, data_JD, params, config, config.regularization.prior);
+        pos_errFun = @(x_opt) errorFunctionEnhancedPositive(x_opt, optimized_params ./ params.scaleFactors, param_mask, data_V, data_JD, params, config, config.regularization.prior, relative_errors);
         x0_pos_opt = optimized_params(param_mask) ./ params.scaleFactors(param_mask);
         lb_pos = params.lb(param_mask) ./ params.scaleFactors(param_mask);
         ub_pos = params.ub(param_mask) ./ params.scaleFactors(param_mask);
@@ -432,11 +451,13 @@ function err = errorFunctionNegative(x, data_V, data_JD, params, config, prior)
 end
 
 % 部分参数优化的误差函数
-function err = errorFunctionPartial(x_opt, x0, param_mask, data_V, data_JD, params, config, prior)
+function err = errorFunctionPartial(x_opt, x0, param_mask, data_V, data_JD, params, config, prior, prev_errors)
     % 构建完整参数向量
     x_full = x0;
     x_full(param_mask) = x_opt;
-    
+    if nargin < 9
+        prev_errors = [];
+    end
     % 反缩放参数
     x_actual = x_full .* params.scaleFactors;
     
@@ -466,8 +487,12 @@ function err = errorFunctionPartial(x_opt, x0, param_mask, data_V, data_JD, para
             end
         end
         
-        % 根据误差大小动态加权，排除零电压附近的点
-        if abs(data_V(i)) > 0.05
+
+        % 根据上一阶段的误差加权，排除零电压附近的点
+        if nargin >= 9 && ~isempty(prev_errors) && abs(data_V(i)) > 0.05
+            w = 1 + abs(prev_errors(i));
+            err(i) = err(i) * w;
+        elseif abs(data_V(i)) > 0.05
             w = 1 + abs(err(i));
             err(i) = err(i) * w;
         end
@@ -483,11 +508,13 @@ function err = errorFunctionPartial(x_opt, x0, param_mask, data_V, data_JD, para
 end
 
 % 增强正电压区域拟合的误差函数
-function err = errorFunctionEnhancedPositive(x_opt, x0, param_mask, data_V, data_JD, params, config, prior)
+function err = errorFunctionEnhancedPositive(x_opt, x0, param_mask, data_V, data_JD, params, config, prior, prev_errors)
     % 构建完整参数向量
     x_full = x0;
     x_full(param_mask) = x_opt;
-    
+    if nargin < 9
+        prev_errors = [];
+    end
     % 反缩放参数
     x_actual = x_full .* params.scaleFactors;
     
@@ -517,8 +544,11 @@ function err = errorFunctionEnhancedPositive(x_opt, x0, param_mask, data_V, data
             end
         end
         
-        % 根据误差大小动态加权，排除零电压附近的点
-        if abs(data_V(i)) > 0.05
+        % 根据上一阶段的误差加权，排除零电压附近的点
+        if nargin >= 9 && ~isempty(prev_errors) && abs(data_V(i)) > 0.05
+            w = 1 + abs(prev_errors(i));
+            err(i) = err(i) * w;
+        elseif abs(data_V(i)) > 0.05
             w = 1 + abs(err(i));
             err(i) = err(i) * w;
         end

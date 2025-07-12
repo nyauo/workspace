@@ -165,7 +165,7 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     end
     fprintf('\n第三阶段：全区域拟合...\n');
     errFun = @(x) errorFunction(x, data_V, data_JD, params, config, config.regularization.prior);
-    [x_scaled_optimized，resnorm_lm]=runWithMultiStart（errFun，x0_scaled，params.lb./ params.scaleFactors，params.ub ./ params.scaleFactors，options_lm，config.optimization）;
+    [x_scaled_optimized,resnorm_lm]=runWithMultiStart(errFun,x0_scaled,params.lb./ params.scaleFactors,params.ub ./ params.scaleFactors,options_lm,config.optimization);
     residual_lm = []; exitflag_lm = []; output_lm = [];
     if x_scaled_optimized(2) * params.scaleFactors(2) <= 0
         fprintf('警告: LM算法产生了负值或零的Rs，正在调整为正值\n');

@@ -29,3 +29,5 @@ install octave`).
   unless the surrounding code uses another language consistently.
 - Document any new functions with a short description, input/output
   details, and examples if helpful.
+## Recent Changes
+- Deprecated `calculateError.m` has been removed. Use `errorFunction.m` instead.

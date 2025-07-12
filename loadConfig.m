@@ -14,4 +14,11 @@ function config = loadConfig()
         'neg_voltage_threshold', -0.2, ... % 负电压区域阈值
         'pos_voltage_threshold', 0.1 ...   % 正电压区域阈值
     );
+
+    % 优化相关设置
+    config.optimization = struct(...
+        'multistart_points', 5, ...
+        'method', 'multistart', ...
+        'target_rel_error', 2 ... % 收敛判据: 平均相对误差 < 2%
+    );
 end

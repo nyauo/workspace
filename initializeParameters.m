@@ -62,7 +62,7 @@ function params = initializeParameters(data_V, data_JD, config)
             
             % 使用优化算法求解J0
             options = optimoptions('lsqnonlin', 'Display', 'off', 'Algorithm', 'levenberg-marquardt');
-            J0_opt = lsqnonlin(function_handle, J0_est, 1e-12, 1e-6, options);
+            [J0_opt, ~] = runWithMultiStart(function_handle, J0_est, 1e-12, 1e-6, options, struct('multistart_points', 3));
             
             J0_values = [J0_values; J0_opt];
         end

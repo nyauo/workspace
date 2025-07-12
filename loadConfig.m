@@ -21,4 +21,9 @@ function config = loadConfig()
         'method', 'multistart', ...
         'target_rel_error', 2 ... % 收敛判据: 平均相对误差 < 2%
     );
+    % Regularization settings for parameter priors
+    config.regularization = struct(...
+        'lambda', 0, ...                % penalty strength
+        'prior', [0, 0, 0, 0] ...       % prior parameter values
+    );    
 end

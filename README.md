@@ -1,1 +1,36 @@
-# workspace
+# Diode Fitting Workflow
+
+This repository contains MATLAB/Octave scripts for fitting diode I-V characteristics. The core program `main.m` loads example data, estimates starting parameters, performs a multi-stage optimisation and optionally allows interactive parameter refinement.
+
+## Setup
+
+1. Clone or download this repository.
+2. Start **MATLAB** or **GNU Octave** and add the repository folder to your path, e.g.
+   ```matlab
+   addpath(genpath('path/to/repo'));
+   ```
+3. Ensure the optimisation functions are available:
+   - In MATLAB, the **Optimization Toolbox** is required for `lsqnonlin`.
+   - In Octave, install the `optim` package.
+
+## Running
+
+Run the main routine from the command line:
+```matlab
+>> main
+```
+The script prompts whether to load parameters saved from previous runs. It then fits the built-in measurement data, plots the results and asks if you want to save them. Saved files include:
+- `fit_results_<timestamp>.mat` – fitting data and parameters
+- `fit_plot_<timestamp>.png` – generated figure
+- `fit_data_<timestamp>.csv` – exported data table
+- `fit_params_<timestamp>.txt` – summary of fitted parameters
+Interactive adjustments, when chosen, are written to `adjusted_params_<timestamp>.(mat|txt)`.
+
+## Fitting workflow
+
+`main.m` performs the following steps:
+1. Load configuration constants and example I-V data.
+2. Optionally initialise parameters from previous results; otherwise use a Lambert‑W based estimate.
+3. Call `performFitting` which optimises different voltage regions before a global fit using Levenberg–Marquardt and trust‑region algorithms.
+4. Compute diode, ohmic and non‑ohmic current components with `calculateCurrents` and plot them via `plotResults`.
+5. Save the results and display final parameters. Interactive refinement can further tweak parameters with real‑time plots.

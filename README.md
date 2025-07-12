@@ -34,10 +34,10 @@ Interactive adjustments, when chosen, are written to `adjusted_params_<timestamp
 3. Call `performFitting` which optimises different voltage regions before a global fit using Levenberg–Marquardt and trust‑region algorithms.
 4. Compute diode, ohmic and non‑ohmic current components with `calculateCurrents` and plot them via `plotResults`.
 5. Save the results and display final parameters. Interactive refinement can further tweak parameters with real‑time plots.
-6. Optimisation stops once the mean relative error drops below
-   config.optimization.target_rel_error` **and** the maximum error is under
-   config.optimization.target_max_error` (default 5 %).
-
+6. After each global fit the mean and maximum relative errors are checked.
+   If either exceeds their thresholds the optimisation is repeated using the
+   current parameters as the starting point with increased iteration limits
+   until the criteria are met or `config.optimization.max_attempts` is reached.
 ## Parameter regularisation
 
 `errorFunction` and its partial variants now accept a vector of prior parameter values. When `config.regularization.lambda` is greater than zero an L2 penalty
@@ -51,5 +51,7 @@ The structure `config.optimization` defines stopping criteria for the global fit
 - `target_rel_error` – mean relative error threshold in percent (default `2`).
 - `target_max_error` – maximum relative error threshold in percent (default
   `Inf`).
+- `max_attempts` – number of times `final_optimization` may be retried when the
+  thresholds are not met (default `3`).
 
 `performFitting` only terminates successfully when both conditions are met.

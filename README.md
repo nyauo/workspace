@@ -40,3 +40,13 @@ Interactive adjustments, when chosen, are written to `adjusted_params_<timestamp
 `errorFunction` and its partial variants now accept a vector of prior parameter values. When `config.regularization.lambda` is greater than zero an L2 penalty
 `lambda * ((x - prior).^2)` is appended to the residuals. Set `config.regularization.prior` and `config.regularization.lambda` in `loadConfig.m` to bias
 the optimisation toward expected parameter values.
+
+## Optimisation thresholds
+
+The structure `config.optimization` defines stopping criteria for the global fit:
+
+- `target_rel_error` – mean relative error threshold in percent (default `2`).
+- `target_max_error` – maximum relative error threshold in percent (default
+  `Inf`).
+
+`performFitting` only terminates successfully when both conditions are met.

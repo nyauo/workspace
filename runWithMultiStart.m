@@ -1,0 +1,62 @@
+function [x_best, resnorm_best] = runWithMultiStart(fun, x0, lb, ub, options, optcfg)
+%RUNWITHMULTISTART  Run lsqnonlin with multiple random starts.
+%   [X_BEST, RESNORM_BEST] = RUNWITHMULTISTART(FUN, X0, LB, UB, OPTIONS, OPTCFG)
+%   attempts to minimize FUN using lsqnonlin starting from several random
+%   points. OPTCFG.multistart_points specifies the number of starting
+%   points. If the Global Optimization Toolbox is available, MultiStart is
+%   used. When particleswarm or ga are requested and available, they are
+%   used to obtain a good initial point before the final lsqnonlin call.
+
+if nargin < 6 || isempty(optcfg)
+    optcfg.multistart_points = 1;
+    optcfg.method = 'multistart';
+end
+if ~isfield(optcfg, 'multistart_points'); optcfg.multistart_points = 1; end
+if ~isfield(optcfg, 'method'); optcfg.method = 'multistart'; end
+
+nStart = max(1, optcfg.multistart_points);
+method = lower(optcfg.method);
+
+% Prefer MultiStart when available
+if exist('MultiStart', 'class') && strcmp(method, 'multistart')
+    problem = createOptimProblem('lsqnonlin', 'x0', x0, 'lb', lb, 'ub', ub, ...
+        'objective', fun, 'options', options);
+    ms = MultiStart('UseParallel', false); %#ok<MSNU>
+    [x_best, resnorm_best] = run(ms, problem, nStart);
+    return;
+end
+
+% Use particleswarm if requested and available
+if strcmp(method, 'particleswarm') && exist('particleswarm', 'file')
+    psOpts = optimoptions('particleswarm', 'Display', 'off');
+    fitness = @(x) norm(fun(x));
+    [x_ps, ~] = particleswarm(fitness, numel(x0), lb, ub, psOpts);
+    [x_best, resnorm_best] = lsqnonlin(fun, x_ps, lb, ub, options);
+    return;
+end
+
+% Use genetic algorithm if requested and available
+if strcmp(method, 'ga') && exist('ga', 'file')
+    gaOpts = optimoptions('ga', 'Display', 'off');
+    fitness = @(x) norm(fun(x));
+    [x_ga, ~] = ga(fitness, numel(x0), [], [], [], [], lb, ub, [], gaOpts);
+    [x_best, resnorm_best] = lsqnonlin(fun, x_ga, lb, ub, options);
+    return;
+end
+
+% Fallback: simple random restarts
+x_best = x0;
+resnorm_best = inf;
+for k = 1:nStart
+    if k == 1
+        start = x0;
+    else
+        start = lb + rand(size(x0)) .* (ub - lb);
+    end
+    [x_try, resnorm_try] = lsqnonlin(fun, start, lb, ub, options);
+    if resnorm_try < resnorm_best
+        resnorm_best = resnorm_try;
+        x_best = x_try;
+    end
+end
+end

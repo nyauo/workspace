@@ -1,4 +1,4 @@
-function err = errorFunction(x, data_V, data_JD, params, config)
+function err = errorFunction(x, data_V, data_JD, params, config, prior)
     % 反缩放参数
     x_actual = x .* params.scaleFactors;
     
@@ -72,5 +72,14 @@ function err = errorFunction(x, data_V, data_JD, params, config)
     zero_idx = find(abs(data_V) < 0.05);
     if ~isempty(zero_idx)
         err(zero_idx) = err(zero_idx) * 2;
+    end
+
+    % Append L2 penalty based on parameter priors if enabled
+    if nargin < 6 || isempty(prior)
+        prior = config.regularization.prior;
+    end
+    if isfield(config, 'regularization') && config.regularization.lambda > 0
+        penalty = sqrt(config.regularization.lambda) * (x_actual(:) - prior(:));
+        err = [err; penalty];
     end
 end

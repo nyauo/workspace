@@ -34,6 +34,9 @@ Interactive adjustments, when chosen, are written to `adjusted_params_<timestamp
 3. Call `performFitting` which optimises different voltage regions before a global fit using Levenberg–Marquardt and trust‑region algorithms.
 4. Compute diode, ohmic and non‑ohmic current components with `calculateCurrents` and plot them via `plotResults`.
 5. Save the results and display final parameters. Interactive refinement can further tweak parameters with real‑time plots.
+6. Optimisation stops once the mean relative error drops below
+   `config.optimization.target_rel_error` **and** the maximum error is under
+   `config.optimization.target_max_error` (default 5 %).
 
 ## Parameter regularisation
 

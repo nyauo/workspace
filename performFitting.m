@@ -149,8 +149,10 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     fit_results_lm.JD = diodeModel(data_V, optimized_params_lm, config);
     fit_results_lm.resnorm = resnorm_lm;
     relative_errors_lm = abs((fit_results_lm.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
-    if mean(relative_errors_lm) < config.optimization.target_rel_error
-        fprintf('平均相对误差 %.2f%% 已满足收敛标准 %.2f%%\n', mean(relative_errors_lm), config.optimization.target_rel_error);
+    max_err_lm = max(relative_errors_lm);
+    if mean(relative_errors_lm) < config.optimization.target_rel_error && ...
+            max_err_lm < config.optimization.target_max_error
+        fprintf('平均相对误差 %.2f%%, 最大相对误差 %.2f%% 已满足收敛标准\n', mean(relative_errors_lm), max_err_lm);
         optimized_params = optimized_params_lm;
         fit_results = fit_results_lm;
         return;
@@ -181,8 +183,10 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     fit_results_tr.JD = diodeModel(data_V, optimized_params_tr, config);
     fit_results_tr.resnorm = resnorm_tr;
     relative_errors_tr = abs((fit_results_tr.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
-    if mean(relative_errors_tr) < config.optimization.target_rel_error
-        fprintf('平均相对误差 %.2f%% 已满足收敛标准 %.2f%%\n', mean(relative_errors_tr), config.optimization.target_rel_error);
+    max_err_tr = max(relative_errors_tr);
+    if mean(relative_errors_tr) < config.optimization.target_rel_error && ...
+            max_err_tr < config.optimization.target_max_error
+        fprintf('平均相对误差 %.2f%%, 最大相对误差 %.2f%% 已满足收敛标准\n', mean(relative_errors_tr), max_err_tr);
         optimized_params = optimized_params_tr;
         fit_results = fit_results_tr;
         return;
@@ -227,6 +231,15 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
         relative_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
     end
 
+    % 使用当前结果作为起点再次局部优化，以减小局部最小值的风险
+    errFun_final = @(x) errorFunction(x, data_V, data_JD, params, config, config.regularization.prior);
+    x_scaled_temp = optimized_params ./ params.scaleFactors;
+    [x_scaled_temp, resnorm_final] = lsqnonlin(errFun_final, x_scaled_temp, params.lb ./ params.scaleFactors, params.ub ./ params.scaleFactors, options_lm);
+    optimized_params = x_scaled_temp .* params.scaleFactors;
+    fit_results.JD = diodeModel(data_V, optimized_params, config);
+    fit_results.resnorm = resnorm_final;
+    relative_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
+
     neg_errors = relative_errors(neg_idx);
     pos_errors = relative_errors(pos_idx);
     if mean(pos_errors) > 2*mean(neg_errors) && mean(pos_errors) > 10
@@ -265,8 +278,13 @@ end
     % 计算欧姆与非欧姆电流的平均绝对值并检查其比值
     % 如果非欧姆电流显著大于欧姆电流，可能表明模型不符合物理约束
     currents = calculateCurrents(data_V, optimized_params, config);
-    mean_ohmic = mean(abs(currents.ohmic));
-    mean_nonohmic = mean(abs(currents.nonohmic));
+    % 只在-0.5到-0.3V区间计算平均值以评估两种电流的相对大小
+    region_idx = data_V >= -0.5 & data_V <= -0.3;
+    if ~any(region_idx)
+        region_idx = data_V < 0;
+    end
+    mean_ohmic = mean(abs(currents.ohmic(region_idx)));
+    mean_nonohmic = mean(abs(currents.nonohmic(region_idx)));
     ratio = mean_nonohmic / (mean_ohmic + eps);
     ratio_threshold = 1e3;
     if ratio > ratio_threshold
@@ -281,11 +299,13 @@ end
     neg_idx = find(data_V < -0.1);
     neg_errors = relative_errors(neg_idx);
     fprintf('\n每个点的相对误差统计：\n');
-    fprintf('最大相对误差: %.2f%%\n', max(relative_errors));
+    max_rel = max(relative_errors);
+    fprintf('最大相对误差: %.2f%%\n', max_rel);
     avg_rel = mean(relative_errors);
     fprintf('平均相对误差: %.2f%%\n', avg_rel);
-    if avg_rel < config.optimization.target_rel_error
-        fprintf('结果满足收敛标准 %.2f%%\n', config.optimization.target_rel_error);
+    if avg_rel < config.optimization.target_rel_error && ...
+            max_rel < config.optimization.target_max_error
+        fprintf('结果满足收敛标准 %.2f%% / %.2f%%\n', config.optimization.target_rel_error, config.optimization.target_max_error);
     end
     fprintf('中位相对误差: %.2f%%\n', median(relative_errors));
     fprintf('负电压区域平均相对误差: %.2f%%\n', mean(neg_errors));
@@ -336,52 +356,6 @@ end
 
 
 % 部分参数优化的误差函数
-function err = errorFunctionNegative(x, data_V, data_JD, params, config, prior)
-    % 反缩放参数
-    x_actual = x .* params.scaleFactors;
-    
-    % 计算模型预测值
-    predicted = diodeModel(data_V, x_actual, config);
-    
-    % 计算误差
-    err = zeros(size(data_JD));
-    
-    for i = 1:length(data_JD)
-        actual_abs = abs(data_JD(i));
-        pred_abs = abs(predicted(i));
-        
-        threshold = 1e-12;
-        
-        if actual_abs < threshold || pred_abs < threshold
-            err(i) = (predicted(i) - data_JD(i)) / max(1e-12, max(max(abs(data_JD))));
-        else
-            % 使用对数误差
-            log_actual = log10(actual_abs);
-            log_pred = log10(pred_abs);
-            err(i) = log_pred - log_actual;
-            
-            % 保持符号一致性
-            if sign(predicted(i)) ~= sign(data_JD(i))
-                err(i) = err(i) * 4;
-            end
-        end
-        
-        % 针对更负的电压区域增加权重
-        if data_V(i) < -0.3
-            err(i) = err(i) * 3;
-        end
-    end
-
-    if nargin < 6 || isempty(prior)
-        prior = config.regularization.prior;
-    end
-    if isfield(config, 'regularization') && config.regularization.lambda > 0
-        penalty = sqrt(config.regularization.lambda) * (x_actual(:) - prior(:));
-        err = [err; penalty];
-    end
-end
-
-% 部分参数优化的误差函数
 function err = errorFunctionPartial(x_opt, x0, param_mask, data_V, data_JD, params, config, prior)
     % 构建完整参数向量
     x_full = x0;
@@ -416,13 +390,10 @@ function err = errorFunctionPartial(x_opt, x0, param_mask, data_V, data_JD, para
             end
         end
         
-        % 针对不同电压区域应用不同权重
-        if data_V(i) < -0.3
-            err(i) = err(i) * 5; % 强负电压区域
-        elseif data_V(i) < -0.1
-            err(i) = err(i) * 3; % 弱负电压区域
-        elseif data_V(i) < 0.1
-            err(i) = err(i) * 2; % 零点附近
+        % 根据误差大小动态加权，排除零电压附近的点
+        if abs(data_V(i)) > 0.05
+            w = 1 + abs(err(i));
+            err(i) = err(i) * w;
         end
     end
 
@@ -470,15 +441,10 @@ function err = errorFunctionEnhancedPositive(x_opt, x0, param_mask, data_V, data
             end
         end
         
-        % 特别加强正电压区域权重，特别是拟合不佳的高电压区域
-        if data_V(i) > 0.25
-            err(i) = err(i) * 8;  % 特别强调高正电压区域
-        elseif data_V(i) > 0.15
-            err(i) = err(i) * 5;  % 中正电压区域
-        elseif data_V(i) > 0
-            err(i) = err(i) * 3;  % 低正电压区域
-        elseif data_V(i) < -0.3
-            err(i) = err(i) * 0.5; % 弱化强负电压区域的影响
+        % 根据误差大小动态加权，排除零电压附近的点
+        if abs(data_V(i)) > 0.05
+            w = 1 + abs(err(i));
+            err(i) = err(i) * w;
         end
     end
 

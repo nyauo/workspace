@@ -33,46 +33,13 @@ function err = errorFunction(x, data_V, data_JD, params, config, prior)
             end
         end
         
-        % 对负电压区域的错误增加权重
-        if data_V(i) < -0.2
-            % 对强负电压区域增加权重
-            err(i) = err(i) * 5.0;
-        elseif data_V(i) < 0
-            % 对弱负电压区域增加权重
-            err(i) = err(i) * 3.0;
+        % 根据误差大小动态加权，零电压附近不加权
+        if abs(data_V(i)) > 0.05
+            w = 1 + abs(err(i));
+            err(i) = err(i) * w;
         end
     end
-    
-    % 对误差施加权重，使小电流区域和大电流区域的拟合同等重要
-    % 将数据电压区间分为几个部分，对每部分施加不同权重
-    neg_voltages = unique(data_V(data_V < 0));
-    n_neg_segments = 4; % 将负电压范围分为4段
-    
-    if ~isempty(neg_voltages)
-        neg_segment_size = ceil(length(neg_voltages) / n_neg_segments);
-        
-        for i = 1:n_neg_segments
-            start_idx = (i-1) * neg_segment_size + 1;
-            end_idx = min(i * neg_segment_size, length(neg_voltages));
-            
-            if start_idx <= end_idx
-                segment_voltages = neg_voltages(start_idx:end_idx);
-                for v = segment_voltages'
-                    idx = find(data_V == v);
-                    % 对第一段（最负的电压区域）给予更高权重
-                    if i == 1
-                        err(idx) = err(idx) * 2;
-                    end
-                end
-            end
-        end
-    end
-    
-    % 特别处理电压为零附近的点
-    zero_idx = find(abs(data_V) < 0.05);
-    if ~isempty(zero_idx)
-        err(zero_idx) = err(zero_idx) * 2;
-    end
+
 
     % Append L2 penalty based on parameter priors if enabled
     if nargin < 6 || isempty(prior)

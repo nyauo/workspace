@@ -58,7 +58,8 @@ function x0_scaled = fit_negative_region(data_V, data_JD, x0_scaled, params, con
         x_actual_neg = x0_scaled .* params.scaleFactors;
         fit_JD_neg = diodeModel(neg_V, x_actual_neg, config);
         neg_rel_errors = abs((fit_JD_neg - neg_JD) ./ (abs(neg_JD) + eps)) * 100;
-        fprintf('负电压区域拟合：平均相对误差 = %.2f%%\n', mean(neg_rel_errors));
+        fprintf('负电压区域拟合：平均相对误差 = %.2f%%, 最大相对误差 = %.2f%%\n', ...
+            mean(neg_rel_errors), max(neg_rel_errors));
         fprintf('优化后的Rsh = %.6e Ohm\n', x_actual_neg(3));
         fprintf('优化后的k = %.6e\n', x_actual_neg(4));
     end
@@ -83,7 +84,8 @@ function x0_scaled = fit_positive_region(data_V, data_JD, x0_scaled, params, con
         x_actual_low_pos = x0_scaled .* params.scaleFactors;
         fit_JD_low_pos = diodeModel(low_pos_V, x_actual_low_pos, config);
         low_pos_rel_errors = abs((fit_JD_low_pos - low_pos_JD) ./ (abs(low_pos_JD) + eps)) * 100;
-        fprintf('低正电压区域拟合：平均相对误差 = %.2f%%\n', mean(low_pos_rel_errors));
+        fprintf('低正电压区域拟合：平均相对误差 = %.2f%%, 最大相对误差 = %.2f%%\n', ...
+            mean(low_pos_rel_errors), max(low_pos_rel_errors));
         fprintf('优化后的J0 = %.6e A\n', x_actual_low_pos(1));
     end
 
@@ -106,7 +108,8 @@ function x0_scaled = fit_positive_region(data_V, data_JD, x0_scaled, params, con
         x_actual_high_pos = x0_scaled .* params.scaleFactors;
         fit_JD_high_pos = diodeModel(high_pos_V, x_actual_high_pos, config);
         high_pos_rel_errors = abs((fit_JD_high_pos - high_pos_JD) ./ (abs(high_pos_JD) + eps)) * 100;
-        fprintf('高正电压区域拟合：平均相对误差 = %.2f%%\n', mean(high_pos_rel_errors));
+        fprintf('高正电压区域拟合：平均相对误差 = %.2f%%, 最大相对误差 = %.2f%%\n', ...
+            mean(high_pos_rel_errors), max(high_pos_rel_errors));
         fprintf('优化后的Rs = %.6e Ohm\n', x_actual_high_pos(2));
     end
 
@@ -130,7 +133,8 @@ function x0_scaled = fit_positive_region(data_V, data_JD, x0_scaled, params, con
         x_actual_pos = x0_scaled .* params.scaleFactors;
         fit_JD_pos = diodeModel(pos_V, x_actual_pos, config);
         pos_rel_errors = abs((fit_JD_pos - pos_JD) ./ (abs(pos_JD) + eps)) * 100;
-        fprintf('正电压区域综合拟合：平均相对误差 = %.2f%%\n', mean(pos_rel_errors));
+        fprintf('正电压区域综合拟合：平均相对误差 = %.2f%%, 最大相对误差 = %.2f%%\n', ...
+            mean(pos_rel_errors), max(pos_rel_errors));
         fprintf('优化后的J0 = %.6e A\n', x_actual_pos(1));
         fprintf('优化后的Rs = %.6e Ohm\n', x_actual_pos(2));
     end
@@ -149,8 +153,13 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     fit_results_lm.JD = diodeModel(data_V, optimized_params_lm, config);
     fit_results_lm.resnorm = resnorm_lm;
     relative_errors_lm = abs((fit_results_lm.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
-    if mean(relative_errors_lm) < config.optimization.target_rel_error
-        fprintf('平均相对误差 %.2f%% 已满足收敛标准 %.2f%%\n', mean(relative_errors_lm), config.optimization.target_rel_error);
+    mean_err_lm = mean(relative_errors_lm);
+    max_err_lm = max(relative_errors_lm);
+    if mean_err_lm < config.optimization.target_rel_error && ...
+            max_err_lm < config.optimization.target_max_error
+        fprintf(['平均相对误差 %.2f%%, 最大相对误差 %.2f%% 已满足收敛标准 %.2f%%/%.2f%%\n'], ...
+            mean_err_lm, max_err_lm, config.optimization.target_rel_error, ...
+            config.optimization.target_max_error);
         optimized_params = optimized_params_lm;
         fit_results = fit_results_lm;
         return;
@@ -181,17 +190,24 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     fit_results_tr.JD = diodeModel(data_V, optimized_params_tr, config);
     fit_results_tr.resnorm = resnorm_tr;
     relative_errors_tr = abs((fit_results_tr.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
-    if mean(relative_errors_tr) < config.optimization.target_rel_error
-        fprintf('平均相对误差 %.2f%% 已满足收敛标准 %.2f%%\n', mean(relative_errors_tr), config.optimization.target_rel_error);
+    mean_err_tr = mean(relative_errors_tr);
+    max_err_tr = max(relative_errors_tr);
+    if mean_err_tr < config.optimization.target_rel_error && ...
+            max_err_tr < config.optimization.target_max_error
+        fprintf(['平均相对误差 %.2f%%, 最大相对误差 %.2f%% 已满足收敛标准 %.2f%%/%.2f%%\n'], ...
+            mean_err_tr, max_err_tr, config.optimization.target_rel_error, ...
+            config.optimization.target_max_error);
         optimized_params = optimized_params_tr;
         fit_results = fit_results_tr;
         return;
     end
     
     fprintf('\n比较两种算法的结果：\n');
-    fprintf('Levenberg-Marquardt: 平均相对误差 = %.2f%%\n', mean(relative_errors_lm));
-    fprintf('Trust-Region-Reflective: 平均相对误差 = %.2f%%\n', mean(relative_errors_tr));
-
+    fprintf('Levenberg-Marquardt: 平均相对误差 = %.2f%%, 最大相对误差 = %.2f%%\n', ...
+            mean(relative_errors_lm), max(relative_errors_lm));
+    fprintf('Trust-Region-Reflective: 平均相对误差 = %.2f%%, 最大相对误差 = %.2f%%\n', ...
+            mean(relative_errors_tr), max(relative_errors_tr));
+            
     neg_idx = find(data_V < 0);
     pos_idx = find(data_V > 0);
     neg_err_lm = relative_errors_lm(neg_idx);
@@ -281,11 +297,15 @@ end
     neg_idx = find(data_V < -0.1);
     neg_errors = relative_errors(neg_idx);
     fprintf('\n每个点的相对误差统计：\n');
-    fprintf('最大相对误差: %.2f%%\n', max(relative_errors));
+    max_rel = max(relative_errors);
+    fprintf('最大相对误差: %.2f%%\n', max_rel);
     avg_rel = mean(relative_errors);
     fprintf('平均相对误差: %.2f%%\n', avg_rel);
-    if avg_rel < config.optimization.target_rel_error
-        fprintf('结果满足收敛标准 %.2f%%\n', config.optimization.target_rel_error);
+    if avg_rel < config.optimization.target_rel_error && ...
+            max_rel < config.optimization.target_max_error
+        fprintf('结果满足收敛标准 %.2f%%/%.2f%%\n', ...
+            config.optimization.target_rel_error, ...
+            config.optimization.target_max_error);
     end
     fprintf('中位相对误差: %.2f%%\n', median(relative_errors));
     fprintf('负电压区域平均相对误差: %.2f%%\n', mean(neg_errors));

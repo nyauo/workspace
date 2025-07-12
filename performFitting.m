@@ -140,7 +140,10 @@ function x0_scaled = fit_positive_region(data_V, data_JD, x0_scaled, params, con
     end
 end
 
-function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm)
+function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm, attempt)
+    if nargin < 7
+        attempt = 1;
+    end
     fprintf('\n第三阶段：全区域拟合...\n');
     errFun = @(x) errorFunction(x, data_V, data_JD, params, config, config.regularization.prior);
     [x_scaled_optimized，resnorm_lm]=runWithMultiStart（errFun，x0_scaled，params.lb./ params.scaleFactors，params.ub ./ params.scaleFactors，options_lm，config.optimization）;
@@ -301,7 +304,7 @@ end
                 '尝试在收紧k上界后重新拟合...\n'], ratio, ratio_threshold);
         params.ub(4) = min(params.ub(4), optimized_params(4));
         [optimized_params, fit_results] = final_optimization(data_V, data_JD, ...
-            optimized_params ./ params.scaleFactors, params, config, options_lm);
+            optimized_params ./ params.scaleFactors, params, config, options_lm, attempt + 1);
         relative_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
     end
 
@@ -309,13 +312,30 @@ end
     neg_errors = relative_errors(neg_idx);
     fprintf('\n每个点的相对误差统计：\n');
     max_rel = max(relative_errors);
-    max_rel = max(relative_errors);
     fprintf('最大相对误差: %.2f%%\n', max_rel);
     avg_rel = mean(relative_errors);
     fprintf('平均相对误差: %.2f%%\n', avg_rel);
+
+    while (avg_rel >= config.optimization.target_rel_error || ...
+           max_rel >= config.optimization.target_max_error) && ...
+           attempt < config.optimization.max_attempts
+        fprintf('误差未满足阈值，尝试再次优化 (%d/%d)...\n', ...
+            attempt + 1, config.optimization.max_attempts);
+        options_lm.MaxIterations = options_lm.MaxIterations * 2;
+        options_lm.MaxFunctionEvaluations = options_lm.MaxFunctionEvaluations * 2;
+        [optimized_params, fit_results] = final_optimization(data_V, data_JD, ...
+            optimized_params ./ params.scaleFactors, params, config, options_lm, attempt + 1);
+        relative_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
+        max_rel = max(relative_errors);
+        avg_rel = mean(relative_errors);
+        attempt = attempt + 1;
+    end
+    
     if avg_rel < config.optimization.target_rel_error && ...
             max_rel < config.optimization.target_max_error
         fprintf('结果满足收敛标准 %.2f%% / %.2f%%\n', config.optimization.target_rel_error, config.optimization.target_max_error);
+        else
+        fprintf('未能达到收敛标准 %.2f%% / %.2f%%\n', config.optimization.target_rel_error, config.optimization.target_max_error);
     end
     fprintf('中位相对误差: %.2f%%\n', median(relative_errors));
     fprintf('负电压区域平均相对误差: %.2f%%\n', mean(neg_errors));

@@ -333,42 +333,7 @@ end
     fprintf('Rsh = %.6e Ohm\n', optimized_params(3));
     fprintf('k = %.6e\n', optimized_params(4));
 end
-function err = errorFunctionNegative(x, data_V, data_JD, params, config)
-    % 反缩放参数
-    x_actual = x .* params.scaleFactors;
-    
-    % 计算模型预测值
-    predicted = diodeModel(data_V, x_actual, config);
-    
-    % 计算误差
-    err = zeros(size(data_JD));
-    
-    for i = 1:length(data_JD)
-        actual_abs = abs(data_JD(i));
-        pred_abs = abs(predicted(i));
-        
-        threshold = 1e-12;
-        
-        if actual_abs < threshold || pred_abs < threshold
-            err(i) = (predicted(i) - data_JD(i)) / max(1e-12, max(max(abs(data_JD))));
-        else
-            % 使用对数误差
-            log_actual = log10(actual_abs);
-            log_pred = log10(pred_abs);
-            err(i) = log_pred - log_actual;
-            
-            % 保持符号一致性
-            if sign(predicted(i)) ~= sign(data_JD(i))
-                err(i) = err(i) * 4;
-            end
-        end
-        
-        % 针对更负的电压区域增加权重
-        if data_V(i) < -0.3
-            err(i) = err(i) * 3;
-        end
-    end
-end
+
 
 % 部分参数优化的误差函数
 function err = errorFunctionPartial(x_opt, x0, param_mask, data_V, data_JD, params, config)

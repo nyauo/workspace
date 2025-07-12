@@ -34,3 +34,9 @@ Interactive adjustments, when chosen, are written to `adjusted_params_<timestamp
 3. Call `performFitting` which optimises different voltage regions before a global fit using Levenberg–Marquardt and trust‑region algorithms.
 4. Compute diode, ohmic and non‑ohmic current components with `calculateCurrents` and plot them via `plotResults`.
 5. Save the results and display final parameters. Interactive refinement can further tweak parameters with real‑time plots.
+
+## Parameter regularisation
+
+`errorFunction` and its partial variants now accept a vector of prior parameter values. When `config.regularization.lambda` is greater than zero an L2 penalty
+`lambda * ((x - prior).^2)` is appended to the residuals. Set `config.regularization.prior` and `config.regularization.lambda` in `loadConfig.m` to bias
+the optimisation toward expected parameter values.

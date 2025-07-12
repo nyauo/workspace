@@ -74,7 +74,7 @@ function x0_scaled = fit_positive_region(data_V, data_JD, x0_scaled, params, con
         low_pos_V = data_V(low_pos_idx);
         low_pos_JD = data_JD(low_pos_idx);
         param_mask = [true, false, false, false];
-        low_pos_errFun = @(x_opt) errorFunctionPartial(x_opt, x0_scaled, param_mask, low_pos_V, low_pos_JD, params, config);
+        low_pos_errFun = @(x_opt) errorFunctionPartial(x_opt, x0_scaled, param_mask, low_pos_V, low_pos_JD, params, config, config.regularization.prior);
         x0_low_pos_opt = x0_scaled(param_mask);
         lb_low_pos = params.lb(param_mask) ./ params.scaleFactors(param_mask);
         ub_low_pos = params.ub(param_mask) ./ params.scaleFactors(param_mask);
@@ -92,7 +92,7 @@ function x0_scaled = fit_positive_region(data_V, data_JD, x0_scaled, params, con
         high_pos_V = data_V(high_pos_idx);
         high_pos_JD = data_JD(high_pos_idx);
         param_mask = [false, true, false, false];
-        high_pos_errFun = @(x_opt) errorFunctionPartial(x_opt, x0_scaled, param_mask, high_pos_V, high_pos_JD, params, config);
+        high_pos_errFun = @(x_opt) errorFunctionPartial(x_opt, x0_scaled, param_mask, high_pos_V, high_pos_JD, params, config, config.regularization.prior);
         x0_high_pos_opt = x0_scaled(param_mask);
         lb_high_pos = params.lb(param_mask) ./ params.scaleFactors(param_mask);
         ub_high_pos = params.ub(param_mask) ./ params.scaleFactors(param_mask);
@@ -116,7 +116,7 @@ function x0_scaled = fit_positive_region(data_V, data_JD, x0_scaled, params, con
         pos_V = data_V(pos_idx);
         pos_JD = data_JD(pos_idx);
         param_mask = [true, true, false, false];
-        pos_errFun = @(x_opt) errorFunctionPartial(x_opt, x0_scaled, param_mask, pos_V, pos_JD, params, config);
+        pos_errFun = @(x_opt) errorFunctionPartial(x_opt, x0_scaled, param_mask, pos_V, pos_JD, params, config, config.regularization.prior);
         x0_pos_opt = x0_scaled(param_mask);
         lb_pos = params.lb(param_mask) ./ params.scaleFactors(param_mask);
         ub_pos = params.ub(param_mask) ./ params.scaleFactors(param_mask);
@@ -138,7 +138,7 @@ end
 
 function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm)
     fprintf('\n第三阶段：全区域拟合...\n');
-    errFun = @(x) errorFunction(x, data_V, data_JD, params, config);
+    errFun = @(x) errorFunction(x, data_V, data_JD, params, config, config.regularization.prior);
     [x_scaled_optimized, resnorm_lm] = runWithMultiStart(errFun, x0_scaled, [], [], options_lm, config.optimization);
     residual_lm = []; exitflag_lm = []; output_lm = [];
     if x_scaled_optimized(2) * params.scaleFactors(2) <= 0
@@ -232,7 +232,7 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     if mean(pos_errors) > 2*mean(neg_errors) && mean(pos_errors) > 10
         fprintf('\n正区域拟合效果较差，尝试单独优化正区域参数...\n');
         param_mask = [true, true, false, false];
-        pos_errFun = @(x_opt) errorFunctionEnhancedPositive(x_opt, optimized_params ./ params.scaleFactors, param_mask, data_V, data_JD, params, config);
+        pos_errFun = @(x_opt) errorFunctionEnhancedPositive(x_opt, optimized_params ./ params.scaleFactors, param_mask, data_V, data_JD, params, config, config.regularization.prior);
         x0_pos_opt = optimized_params(param_mask) ./ params.scaleFactors(param_mask);
         lb_pos = params.lb(param_mask) ./ params.scaleFactors(param_mask);
         ub_pos = params.ub(param_mask) ./ params.scaleFactors(param_mask);
@@ -336,7 +336,53 @@ end
 
 
 % 部分参数优化的误差函数
-function err = errorFunctionPartial(x_opt, x0, param_mask, data_V, data_JD, params, config)
+function err = errorFunctionNegative(x, data_V, data_JD, params, config, prior)
+    % 反缩放参数
+    x_actual = x .* params.scaleFactors;
+    
+    % 计算模型预测值
+    predicted = diodeModel(data_V, x_actual, config);
+    
+    % 计算误差
+    err = zeros(size(data_JD));
+    
+    for i = 1:length(data_JD)
+        actual_abs = abs(data_JD(i));
+        pred_abs = abs(predicted(i));
+        
+        threshold = 1e-12;
+        
+        if actual_abs < threshold || pred_abs < threshold
+            err(i) = (predicted(i) - data_JD(i)) / max(1e-12, max(max(abs(data_JD))));
+        else
+            % 使用对数误差
+            log_actual = log10(actual_abs);
+            log_pred = log10(pred_abs);
+            err(i) = log_pred - log_actual;
+            
+            % 保持符号一致性
+            if sign(predicted(i)) ~= sign(data_JD(i))
+                err(i) = err(i) * 4;
+            end
+        end
+        
+        % 针对更负的电压区域增加权重
+        if data_V(i) < -0.3
+            err(i) = err(i) * 3;
+        end
+    end
+
+    if nargin < 6 || isempty(prior)
+        prior = config.regularization.prior;
+    end
+    if isfield(config, 'regularization') && config.regularization.lambda > 0
+        penalty = sqrt(config.regularization.lambda) * (x_actual(:) - prior(:));
+        err = [err; penalty];
+    end
+end
+
+% 部分参数优化的误差函数
+function err = errorFunctionPartial(x_opt, x0, param_mask, data_V, data_JD, params, config, prior)
     % 构建完整参数向量
     x_full = x0;
     x_full(param_mask) = x_opt;
@@ -379,10 +425,18 @@ function err = errorFunctionPartial(x_opt, x0, param_mask, data_V, data_JD, para
             err(i) = err(i) * 2; % 零点附近
         end
     end
+
+    if nargin < 7 || isempty(prior)
+        prior = config.regularization.prior;
+    end
+    if isfield(config, 'regularization') && config.regularization.lambda > 0
+        penalty = sqrt(config.regularization.lambda) * (x_actual(:) - prior(:));
+        err = [err; penalty];
+    end
 end
 
 % 增强正电压区域拟合的误差函数
-function err = errorFunctionEnhancedPositive(x_opt, x0, param_mask, data_V, data_JD, params, config)
+function err = errorFunctionEnhancedPositive(x_opt, x0, param_mask, data_V, data_JD, params, config, prior)
     % 构建完整参数向量
     x_full = x0;
     x_full(param_mask) = x_opt;
@@ -426,5 +480,13 @@ function err = errorFunctionEnhancedPositive(x_opt, x0, param_mask, data_V, data
         elseif data_V(i) < -0.3
             err(i) = err(i) * 0.5; % 弱化强负电压区域的影响
         end
+    end
+
+    if nargin < 7 || isempty(prior)
+        prior = config.regularization.prior;
+    end
+    if isfield(config, 'regularization') && config.regularization.lambda > 0
+        penalty = sqrt(config.regularization.lambda) * (x_actual(:) - prior(:));
+        err = [err; penalty];
     end
 end

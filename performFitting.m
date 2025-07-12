@@ -53,7 +53,7 @@ function x0_scaled = fit_negative_region(data_V, data_JD, x0_scaled, params, con
         x0_neg_opt = x0_scaled(param_mask);
         lb_neg = params.lb(param_mask) ./ params.scaleFactors(param_mask);
         ub_neg = params.ub(param_mask) ./ params.scaleFactors(param_mask);
-        [x_neg_opt, ~, ~, ~, ~] = lsqnonlin(neg_errFun, x0_neg_opt, lb_neg, ub_neg, options_lm);
+        [x_neg_opt, ~] = runWithMultiStart(neg_errFun, x0_neg_opt, lb_neg, ub_neg, options_lm, config.optimization);
         x0_scaled(param_mask) = x_neg_opt;
         x_actual_neg = x0_scaled .* params.scaleFactors;
         fit_JD_neg = diodeModel(neg_V, x_actual_neg, config);
@@ -78,7 +78,7 @@ function x0_scaled = fit_positive_region(data_V, data_JD, x0_scaled, params, con
         x0_low_pos_opt = x0_scaled(param_mask);
         lb_low_pos = params.lb(param_mask) ./ params.scaleFactors(param_mask);
         ub_low_pos = params.ub(param_mask) ./ params.scaleFactors(param_mask);
-        [x_low_pos_opt, ~, ~, ~, ~] = lsqnonlin(low_pos_errFun, x0_low_pos_opt, lb_low_pos, ub_low_pos, options_lm);
+        [x_low_pos_opt, ~] = runWithMultiStart(low_pos_errFun, x0_low_pos_opt, lb_low_pos, ub_low_pos, options_lm, config.optimization);
         x0_scaled(param_mask) = x_low_pos_opt;
         x_actual_low_pos = x0_scaled .* params.scaleFactors;
         fit_JD_low_pos = diodeModel(low_pos_V, x_actual_low_pos, config);
@@ -96,7 +96,7 @@ function x0_scaled = fit_positive_region(data_V, data_JD, x0_scaled, params, con
         x0_high_pos_opt = x0_scaled(param_mask);
         lb_high_pos = params.lb(param_mask) ./ params.scaleFactors(param_mask);
         ub_high_pos = params.ub(param_mask) ./ params.scaleFactors(param_mask);
-        [x_high_pos_opt, ~, ~, ~, ~] = lsqnonlin(high_pos_errFun, x0_high_pos_opt, lb_high_pos, ub_high_pos, options_lm);
+        [x_high_pos_opt, ~] = runWithMultiStart(high_pos_errFun, x0_high_pos_opt, lb_high_pos, ub_high_pos, options_lm, config.optimization);
         x0_scaled(param_mask) = x_high_pos_opt;
         if x0_scaled(2) * params.scaleFactors(2) <= 0
             fprintf('警告: Rs为负值或零，正在调整为正值\n');
@@ -120,7 +120,7 @@ function x0_scaled = fit_positive_region(data_V, data_JD, x0_scaled, params, con
         x0_pos_opt = x0_scaled(param_mask);
         lb_pos = params.lb(param_mask) ./ params.scaleFactors(param_mask);
         ub_pos = params.ub(param_mask) ./ params.scaleFactors(param_mask);
-        [x_pos_opt, ~, ~, ~, ~] = lsqnonlin(pos_errFun, x0_pos_opt, lb_pos, ub_pos, options_lm);
+        [x_pos_opt, ~] = runWithMultiStart(pos_errFun, x0_pos_opt, lb_pos, ub_pos, options_lm, config.optimization);
         x0_scaled(param_mask) = x_pos_opt;
         if x0_scaled(2) * params.scaleFactors(2) <= 0
             fprintf('警告: Rs为负值或零，正在调整为正值\n');
@@ -139,7 +139,8 @@ end
 function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm)
     fprintf('\n第三阶段：全区域拟合...\n');
     errFun = @(x) errorFunction(x, data_V, data_JD, params, config);
-    [x_scaled_optimized, resnorm_lm, residual_lm, exitflag_lm, output_lm] = lsqnonlin(errFun, x0_scaled, [], [], options_lm);
+    [x_scaled_optimized, resnorm_lm] = runWithMultiStart(errFun, x0_scaled, [], [], options_lm, config.optimization);
+    residual_lm = []; exitflag_lm = []; output_lm = [];
     if x_scaled_optimized(2) * params.scaleFactors(2) <= 0
         fprintf('警告: LM算法产生了负值或零的Rs，正在调整为正值\n');
         x_scaled_optimized(2) = params.lb(2) / params.scaleFactors(2);
@@ -148,6 +149,12 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     fit_results_lm.JD = diodeModel(data_V, optimized_params_lm, config);
     fit_results_lm.resnorm = resnorm_lm;
     relative_errors_lm = abs((fit_results_lm.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
+    if mean(relative_errors_lm) < config.optimization.target_rel_error
+        fprintf('平均相对误差 %.2f%% 已满足收敛标准 %.2f%%\n', mean(relative_errors_lm), config.optimization.target_rel_error);
+        optimized_params = optimized_params_lm;
+        fit_results = fit_results_lm;
+        return;
+    end
 
     fprintf('\n第四阶段：使用trust-region-reflective算法进行拟合...\n');
     options_tr = optimoptions('lsqnonlin', ...
@@ -164,8 +171,8 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
         fprintf('警告: Rs下界为负值或零，已调整为正值\n');
         params.lb(2) = 10;
     end
-    [x_scaled_optimized_tr, resnorm_tr, residual_tr, exitflag_tr, output_tr] = ...
-        lsqnonlin(errFun, x_scaled_optimized, params.lb ./ params.scaleFactors, params.ub ./ params.scaleFactors, options_tr);
+    [x_scaled_optimized_tr, resnorm_tr] = runWithMultiStart(errFun, x_scaled_optimized, params.lb ./ params.scaleFactors, params.ub ./ params.scaleFactors, options_tr, config.optimization);
+    residual_tr = []; exitflag_tr = []; output_tr = [];
     if x_scaled_optimized_tr(2) * params.scaleFactors(2) <= 0
         fprintf('警告: TR算法产生了负值或零的Rs，正在调整为正值\n');
         x_scaled_optimized_tr(2) = params.lb(2) / params.scaleFactors(2);
@@ -174,7 +181,13 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     fit_results_tr.JD = diodeModel(data_V, optimized_params_tr, config);
     fit_results_tr.resnorm = resnorm_tr;
     relative_errors_tr = abs((fit_results_tr.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
-
+    if mean(relative_errors_tr) < config.optimization.target_rel_error
+        fprintf('平均相对误差 %.2f%% 已满足收敛标准 %.2f%%\n', mean(relative_errors_tr), config.optimization.target_rel_error);
+        optimized_params = optimized_params_tr;
+        fit_results = fit_results_tr;
+        return;
+    end
+    
     fprintf('\n比较两种算法的结果：\n');
     fprintf('Levenberg-Marquardt: 平均相对误差 = %.2f%%\n', mean(relative_errors_lm));
     fprintf('Trust-Region-Reflective: 平均相对误差 = %.2f%%\n', mean(relative_errors_tr));
@@ -224,7 +237,7 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
         lb_pos = params.lb(param_mask) ./ params.scaleFactors(param_mask);
         ub_pos = params.ub(param_mask) ./ params.scaleFactors(param_mask);
         options_pos = optimoptions('lsqnonlin', 'Display', 'iter-detailed', 'Algorithm', 'levenberg-marquardt', 'FunctionTolerance', 1e-12, 'OptimalityTolerance', 1e-12, 'StepTolerance', 1e-12, 'MaxFunctionEvaluations', 3000, 'MaxIterations', 2000);
-        [x_pos_opt, ~, ~, ~, ~] = lsqnonlin(pos_errFun, x0_pos_opt, [], [], options_pos);
+        [x_pos_opt, ~] = runWithMultiStart(pos_errFun, x0_pos_opt, lb_pos, ub_pos, options_pos, config.optimization);
         if x_pos_opt(2) * params.scaleFactors(2) <= 0
             fprintf('警告: 正区域优化产生了负值或零的Rs，正在调整为正值\n');
             x_pos_opt(2) = lb_pos(2);
@@ -269,7 +282,11 @@ end
     neg_errors = relative_errors(neg_idx);
     fprintf('\n每个点的相对误差统计：\n');
     fprintf('最大相对误差: %.2f%%\n', max(relative_errors));
-    fprintf('平均相对误差: %.2f%%\n', mean(relative_errors));
+    avg_rel = mean(relative_errors);
+    fprintf('平均相对误差: %.2f%%\n', avg_rel);
+    if avg_rel < config.optimization.target_rel_error
+        fprintf('结果满足收敛标准 %.2f%%\n', config.optimization.target_rel_error);
+    end
     fprintf('中位相对误差: %.2f%%\n', median(relative_errors));
     fprintf('负电压区域平均相对误差: %.2f%%\n', mean(neg_errors));
 

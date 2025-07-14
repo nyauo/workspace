@@ -55,3 +55,16 @@ The structure `config.optimization` defines stopping criteria for the global fit
   thresholds are not met (default `3`).
 
 `performFitting` only terminates successfully when both conditions are met.
+
+### Optimisation methods
+
+Set `config.optimization.method` to `multistart`, `particleswarm` or `ga` to
+select the global search strategy. `particleswarm` and `ga` require the
+corresponding MATLAB toolboxes or Octave packages.
+
+### Additional options
+
+- `improvement_threshold` – minimal improvement (in percent) between retries
+  before the optimisation stops early.
+- `m_range`/`m_step` – when convergence fails the script sweeps the exponent `m`
+  over this range to seek a better fit.

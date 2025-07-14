@@ -58,8 +58,8 @@ function JD = diodeModel(V, params, config)
         best_J = initial_guess;
         best_residual = Inf;
         
-        % 尝试5种不同的初始猜测
-        for attempt = 1:5
+        % 尝试x种不同的初始猜测
+        for attempt = 1:3
             if attempt > 1
                 % 对初始猜测做随机扰动
                 if V(i) < 0

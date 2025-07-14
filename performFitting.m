@@ -36,6 +36,33 @@ function [optimized_params, fit_results] = performFitting(data_V, data_JD, param
         [x0_scaled, rel_errors] = fit_negative_region(data_V, data_JD, x0_scaled, params, config, options_lm);
         [x0_scaled, rel_errors] = fit_positive_region(data_V, data_JD, x0_scaled, params, config, options_lm, rel_errors);
         [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm);
+        
+        % 检查误差是否满足阈值，否则在小范围内调整m重新拟合
+        rel = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
+        if mean(rel) >= config.optimization.target_rel_error || ...
+                max(rel) >= config.optimization.target_max_error
+            fprintf('未达到误差阈值，尝试在%.1f到%.1f范围内调整m...\n', ...
+                config.optimization.m_range(1), config.optimization.m_range(2));
+            best_err = mean(rel);
+            best_params = optimized_params;
+            best_fit = fit_results;
+            original_m = config.physics.m;
+            m_values = config.optimization.m_range(1):config.optimization.m_step:config.optimization.m_range(2);
+            for m_val = m_values
+                config.physics.m = m_val;
+                [tmp_params, tmp_fit] = final_optimization(data_V, data_JD, best_params ./ params.scaleFactors, params, config, options_lm);
+                tmp_rel = abs((tmp_fit.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
+                tmp_err = mean(tmp_rel);
+                if tmp_err < best_err
+                    best_err = tmp_err;
+                    best_params = tmp_params;
+                    best_fit = tmp_fit;
+                end
+            end
+            config.physics.m = original_m;
+            optimized_params = best_params;
+            fit_results = best_fit;
+        end
     catch ME
         error('拟合过程出错: %s', ME.message);
     end
@@ -341,6 +368,7 @@ end
     fprintf('最大相对误差: %.2f%%\n', max_rel);
     avg_rel = mean(relative_errors);
     fprintf('平均相对误差: %.2f%%\n', avg_rel);
+    prev_avg_rel = avg_rel;
 
     while (avg_rel >= config.optimization.target_rel_error || ...
            max_rel >= config.optimization.target_max_error) && ...
@@ -354,6 +382,11 @@ end
         relative_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
         max_rel = max(relative_errors);
         avg_rel = mean(relative_errors);
+        if prev_avg_rel - avg_rel < config.optimization.improvement_threshold
+            fprintf('改进不足 %.2f%%，提前停止重试\n', config.optimization.improvement_threshold);
+            break;
+        end
+        prev_avg_rel = avg_rel;
         attempt = attempt + 1;
     end
     

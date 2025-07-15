@@ -32,10 +32,18 @@ function [optimized_params, fit_results] = performFitting(data_V, data_JD, param
             'DiffMinChange', 1e-8, ...
             'MaxIterations', 4000);
             
+         % Combine optimisation options with parallel flag
+        optcfg = config.optimization;
+        if isfield(config, 'parallel') && isfield(config.parallel, 'use')
+            optcfg.use_parallel = config.parallel.use;
+        else
+            optcfg.use_parallel = false;
+        end
+        
        % 分阶段优化
-        [x0_scaled, rel_errors] = fit_negative_region(data_V, data_JD, x0_scaled, params, config, options_lm);
-        [x0_scaled, rel_errors] = fit_positive_region(data_V, data_JD, x0_scaled, params, config, options_lm, rel_errors);
-        [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm);
+        [x0_scaled, rel_errors] = fit_negative_region(data_V, data_JD, x0_scaled, params, config, options_lm, optcfg);
+        [x0_scaled, rel_errors] = fit_positive_region(data_V, data_JD, x0_scaled, params, config, options_lm, rel_errors, optcfg);
+        [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm, optcfg);
         
         % 检查误差是否满足阈值，否则在小范围内调整m重新拟合
         rel = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
@@ -50,7 +58,7 @@ function [optimized_params, fit_results] = performFitting(data_V, data_JD, param
             m_values = config.optimization.m_range(1):config.optimization.m_step:config.optimization.m_range(2);
             for m_val = m_values
                 config.physics.m = m_val;
-                [tmp_params, tmp_fit] = final_optimization(data_V, data_JD, best_params ./ params.scaleFactors, params, config, options_lm);
+                [tmp_params, tmp_fit] = final_optimization(data_V, data_JD, best_params ./ params.scaleFactors, params, config, options_lm, optcfg);
                 tmp_rel = abs((tmp_fit.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
                 tmp_err = mean(tmp_rel);
                 if tmp_err < best_err
@@ -68,7 +76,7 @@ function [optimized_params, fit_results] = performFitting(data_V, data_JD, param
     end
 end
 
-function [x0_scaled, rel_errors] = fit_negative_region(data_V, data_JD, x0_scaled, params, config, options_lm)
+function [x0_scaled, rel_errors] = fit_negative_region(data_V, data_JD, x0_scaled, params, config, options_lm, optcfg)
     fprintf('\n第一阶段：优化Rsh和非欧姆系数k...\n');
     neg_idx = find(data_V < -0.1);
     if ~isempty(neg_idx)
@@ -80,7 +88,8 @@ function [x0_scaled, rel_errors] = fit_negative_region(data_V, data_JD, x0_scale
         x0_neg_opt = x0_scaled(param_mask);
         lb_neg = params.lb(param_mask) ./ params.scaleFactors(param_mask);
         ub_neg = params.ub(param_mask) ./ params.scaleFactors(param_mask);
-        [x_neg_opt, ~] = runWithMultiStart(neg_errFun, x0_neg_opt, lb_neg, ub_neg, options_lm, config.optimization);
+        optcfg_neg = optcfg;
+        [x_neg_opt, ~] = runWithMultiStart(neg_errFun, x0_neg_opt, lb_neg, ub_neg, options_lm, optcfg_neg);
         x0_scaled(param_mask) = x_neg_opt;
         x_actual_neg = x0_scaled .* params.scaleFactors;
         fit_JD_neg = diodeModel(neg_V, x_actual_neg, config);
@@ -96,7 +105,7 @@ function [x0_scaled, rel_errors] = fit_negative_region(data_V, data_JD, x0_scale
     rel_errors = abs((fit_all - data_JD) ./ (abs(data_JD) + eps));
 end
 
-function [x0_scaled, rel_errors] = fit_positive_region(data_V, data_JD, x0_scaled, params, config, options_lm, prev_errors)
+function [x0_scaled, rel_errors] = fit_positive_region(data_V, data_JD, x0_scaled, params, config, options_lm, prev_errors, optcfg)
     fprintf('\n第二阶段：细分正电压区域优化...\n');
     low_pos_idx = find(data_V > 0 & data_V <= 0.15);
     high_pos_idx = find(data_V > 0.15);
@@ -111,7 +120,8 @@ function [x0_scaled, rel_errors] = fit_positive_region(data_V, data_JD, x0_scale
         x0_low_pos_opt = x0_scaled(param_mask);
         lb_low_pos = params.lb(param_mask) ./ params.scaleFactors(param_mask);
         ub_low_pos = params.ub(param_mask) ./ params.scaleFactors(param_mask);
-        [x_low_pos_opt, ~] = runWithMultiStart(low_pos_errFun, x0_low_pos_opt, lb_low_pos, ub_low_pos, options_lm, config.optimization);
+        optcfg_low = optcfg;
+        [x_low_pos_opt, ~] = runWithMultiStart(low_pos_errFun, x0_low_pos_opt, lb_low_pos, ub_low_pos, options_lm, optcfg_low);
         x0_scaled(param_mask) = x_low_pos_opt;
         % 更新误差供下一小阶段使用
         x_all = x0_scaled .* params.scaleFactors;
@@ -135,7 +145,8 @@ function [x0_scaled, rel_errors] = fit_positive_region(data_V, data_JD, x0_scale
         x0_high_pos_opt = x0_scaled(param_mask);
         lb_high_pos = params.lb(param_mask) ./ params.scaleFactors(param_mask);
         ub_high_pos = params.ub(param_mask) ./ params.scaleFactors(param_mask);
-        [x_high_pos_opt, ~] = runWithMultiStart(high_pos_errFun, x0_high_pos_opt, lb_high_pos, ub_high_pos, options_lm, config.optimization);
+        optcfg_high = optcfg;
+        [x_high_pos_opt, ~] = runWithMultiStart(high_pos_errFun, x0_high_pos_opt, lb_high_pos, ub_high_pos, options_lm, optcfg_high);
         x0_scaled(param_mask) = x_high_pos_opt;
         % 更新误差供下一小阶段使用
         x_all = x0_scaled .* params.scaleFactors;
@@ -165,7 +176,8 @@ function [x0_scaled, rel_errors] = fit_positive_region(data_V, data_JD, x0_scale
         x0_pos_opt = x0_scaled(param_mask);
         lb_pos = params.lb(param_mask) ./ params.scaleFactors(param_mask);
         ub_pos = params.ub(param_mask) ./ params.scaleFactors(param_mask);
-        [x_pos_opt, ~] = runWithMultiStart(pos_errFun, x0_pos_opt, lb_pos, ub_pos, options_lm, config.optimization);
+        optcfg_pos = optcfg;
+        [x_pos_opt, ~] = runWithMultiStart(pos_errFun, x0_pos_opt, lb_pos, ub_pos, options_lm, optcfg_pos);
         x0_scaled(param_mask) = x_pos_opt;
         if x0_scaled(2) * params.scaleFactors(2) <= 0
             fprintf('警告: Rs为负值或零，正在调整为正值\n');
@@ -186,16 +198,16 @@ function [x0_scaled, rel_errors] = fit_positive_region(data_V, data_JD, x0_scale
     rel_errors = abs((fit_all - data_JD) ./ (abs(data_JD) + eps));    
 end
 
-function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm, attempt, retry_count)
-    if nargin < 7
+function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm, optcfg, attempt, retry_count)
+    if nargin < 8
         attempt = 1;
     end
-    if nargin < 8
+    if nargin < 9
         retry_count = 0;
     end
     fprintf('\n第三阶段：全区域拟合...\n');
     errFun = @(x) errorFunction(x, data_V, data_JD, params, config, config.regularization.prior);
-    [x_scaled_optimized,resnorm_lm]=runWithMultiStart(errFun,x0_scaled,params.lb./ params.scaleFactors,params.ub ./ params.scaleFactors,options_lm,config.optimization);
+    [x_scaled_optimized,resnorm_lm]=runWithMultiStart(errFun,x0_scaled,params.lb./ params.scaleFactors,params.ub ./ params.scaleFactors,options_lm,optcfg);
     residual_lm = []; exitflag_lm = []; output_lm = [];
     if x_scaled_optimized(2) * params.scaleFactors(2) <= 0
         fprintf('警告: LM算法产生了负值或零的Rs，正在调整为正值\n');
@@ -229,7 +241,7 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
         fprintf('警告: Rs下界为负值或零，已调整为正值\n');
         params.lb(2) = 10;
     end
-    [x_scaled_optimized_tr, resnorm_tr] = runWithMultiStart(errFun, x_scaled_optimized, params.lb ./ params.scaleFactors, params.ub ./ params.scaleFactors, options_tr, config.optimization);
+    [x_scaled_optimized_tr, resnorm_tr] = runWithMultiStart(errFun, x_scaled_optimized, params.lb ./ params.scaleFactors, params.ub ./ params.scaleFactors, options_tr, optcfg);
     residual_tr = []; exitflag_tr = []; output_tr = [];
     if x_scaled_optimized_tr(2) * params.scaleFactors(2) <= 0
         fprintf('警告: TR算法产生了负值或零的Rs，正在调整为正值\n');
@@ -311,7 +323,8 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
         lb_pos = params.lb(param_mask) ./ params.scaleFactors(param_mask);
         ub_pos = params.ub(param_mask) ./ params.scaleFactors(param_mask);
         options_pos = optimoptions('lsqnonlin', 'Display', 'iter-detailed', 'Algorithm', 'levenberg-marquardt', 'FunctionTolerance', 1e-12, 'OptimalityTolerance', 1e-12, 'StepTolerance', 1e-12, 'MaxFunctionEvaluations', 3000, 'MaxIterations', 2000);
-        [x_pos_opt, ~] = runWithMultiStart(pos_errFun, x0_pos_opt, lb_pos, ub_pos, options_pos, config.optimization);
+        optcfg_enh = optcfg;
+        [x_pos_opt, ~] = runWithMultiStart(pos_errFun, x0_pos_opt, lb_pos, ub_pos, options_pos, optcfg_enh);
         if x_pos_opt(2) * params.scaleFactors(2) <= 0
             fprintf('警告: 正区域优化产生了负值或零的Rs，正在调整为正值\n');
             x_pos_opt(2) = lb_pos(2);
@@ -354,7 +367,7 @@ end
         if retry_count < config.optimization.max_retries
             params.ub(4) = min(params.ub(4), optimized_params(4));
             [optimized_params, fit_results] = final_optimization(data_V, data_JD, ...
-                optimized_params ./ params.scaleFactors, params, config, options_lm, attempt + 1, retry_count + 1);
+                optimized_params ./ params.scaleFactors, params, config, options_lm, optcfg, attempt + 1, retry_count + 1);
             relative_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
         else
             fprintf('达到最大重试次数 %d，停止递归。\n', config.optimization.max_retries);
@@ -378,7 +391,7 @@ end
         options_lm.MaxIterations = options_lm.MaxIterations * 2;
         options_lm.MaxFunctionEvaluations = options_lm.MaxFunctionEvaluations * 2;
         [optimized_params, fit_results] = final_optimization(data_V, data_JD, ...
-            optimized_params ./ params.scaleFactors, params, config, options_lm, attempt + 1, retry_count);
+            optimized_params ./ params.scaleFactors, params, config, options_lm, optcfg, attempt + 1, retry_count);
         relative_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
         max_rel = max(relative_errors);
         avg_rel = mean(relative_errors);

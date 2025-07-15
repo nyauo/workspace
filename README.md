@@ -68,3 +68,13 @@ corresponding MATLAB toolboxes or Octave packages.
   before the optimisation stops early.
 - `m_range`/`m_step` – when convergence fails the script sweeps the exponent `m`
   over this range to seek a better fit.
+
+
+### Parallel computing
+
+Set `config.parallel.use` to `true` in `loadConfig.m` to enable parallel
+optimisation. When enabled, `runWithMultiStart` uses a parallel pool for the
+MultiStart solver and the fallback random restarts. Specify
+`config.parallel.poolSize` to control the size of the pool or leave it empty to
+use the default. The Parallel Computing Toolbox (MATLAB) or the `parallel`
+package (Octave) must be installed.

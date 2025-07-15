@@ -1,6 +1,18 @@
 function main()
     % 加载配置和数据
     config = loadConfig();
+    
+     % Start a parallel pool if configured
+    if isfield(config, 'parallel') && config.parallel.use && exist('parpool', 'file')
+        if isempty(gcp('nocreate'))
+            if isfield(config.parallel, 'poolSize') && ~isempty(config.parallel.poolSize)
+                parpool(config.parallel.poolSize);
+            else
+                parpool;
+            end
+        end
+    end
+    
     [data_V, data_JD] = loadData();
     
     % 验证输入数据

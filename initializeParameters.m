@@ -16,10 +16,10 @@ function params = initializeParameters(data_V, data_JD, config)
         if max_idx > 1
             Rs_est = abs((data_V(max_idx) - data_V(max_idx-1)) / (data_JD(max_idx) - data_JD(max_idx-1)));
         else
-            Rs_est = 1e3; % 默认值
+            Rs_est = 1e2; % 默认值
         end
     else
-        Rs_est = 1e3; % 默认值
+        Rs_est = 1e2; % 默认值
     end
     
     % 估计Rsh - 使用负电压区域的斜率
@@ -70,7 +70,7 @@ function params = initializeParameters(data_V, data_JD, config)
         % 计算J0的平均值
         J0_est = median(J0_values);
     else
-        J0_est = 1e-9; % 默认值
+        J0_est = 1e-7; % 默认值
     end
     
     % 估计非欧姆系数k - 根据负电压区域的数据
@@ -86,14 +86,14 @@ function params = initializeParameters(data_V, data_JD, config)
     params.x0 = [J0_est, Rs_est, Rsh_est, k_est];
     
     % 参数范围设置
-    params.ub = [1e-6, 1e4, 1e10, 1e-5];    % 上界
-    params.lb = [1e-12, 1e1, 1e5, 1e-10];    % 下界
+    params.ub = [1e-5, 1e3, 1e9, 1e-4];    % 上界
+    params.lb = [1e-9, 1e1, 1e5, 1e-8];    % 下界
     
     % 确保初始值在范围内
     params.x0 = min(max(params.x0, params.lb), params.ub);
     
     % 缩放因子，使各参数量级相近
-    params.scaleFactors = [1e-9, 1e3, 1e7, 1e-8];
+    params.scaleFactors = [1e-7, 1e2, 1e6, 1e-6];
 end
 
 % 辅助函数：求解J0的目标函数

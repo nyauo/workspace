@@ -21,9 +21,7 @@ function config = loadConfig()
     config.optimization = struct(...
         'multistart_points', 5, ...
         'method', 'multistart', ...
-        'target_rel_error', 2, ... % 收敛判据: 平均相对误差 < 2%
-        'target_max_error', 5, ...  % 收敛判据: 最大相对误差 < 5%
-        'max_attempts', 3, ...     % 达到阈值前最多重新优化次数
+        'max_attempts', 3, ...     % 最大优化尝试次数
         'max_retries', 2, ...      % 非欧姆比率过高时的最大递归次数
         'improvement_threshold', 0.1, ... % 最小改进幅度 (百分比)
         'm_range', [2, 3], ...     % 调整m的范围

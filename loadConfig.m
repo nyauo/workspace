@@ -4,7 +4,8 @@ function config = loadConfig()
         'kb', 1.38e-23, ...    % 波尔兹曼常数 (J/K)
         'T', 300, ...          % 温度 (K)
         'n', 1.4, ...          % Ideality factor - 增大以更好适应负区域
-        'n2', 5, ...           % Ideality factor for tunnelling component
+        'n2_range', [2, 8], ... % allowable range for tunnelling ideality factor
+        'n2', 5, ...           % default tunnelling ideality factor (midpoint)
         'm', 2.4 ...           % Exponent for recombination - 对非欧姆项的指数调整
     );
     

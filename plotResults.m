@@ -10,6 +10,7 @@ function plotResults(V, JD_measured, fit_results, currents)
     hold on;
     semilogy(V, abs(currents.total), 'ro', 'DisplayName', '总拟合电流', 'MarkerSize', 6);
     semilogy(V, abs(currents.diode), 'b--', 'DisplayName', '二极管电流', 'LineWidth', 1.5);
+        semilogy(V, abs(currents.tunnel), 'c--', 'DisplayName', '隧穿电流', 'LineWidth', 1.5);
     semilogy(V, abs(currents.ohmic), 'g--', 'DisplayName', '欧姆电流', 'LineWidth', 1.5);
     semilogy(V, abs(currents.nonohmic), 'm--', 'DisplayName', '非欧姆电流', 'LineWidth', 1.5);
     
@@ -55,5 +56,6 @@ function plotResults(V, JD_measured, fit_results, currents)
         'EdgeColor', 'none');
     fprintf('二极管电流占比: %.2f%%\n', mean(abs(currents.diode ./ currents.total)) * 100);
     fprintf('欧姆电流占比: %.2f%%\n', mean(abs(currents.ohmic ./ currents.total)) * 100);
+    fprintf('隧穿电流占比: %.2f%%\n', mean(abs(currents.tunnel ./ currents.total)) * 100);
     fprintf('非欧姆电流占比: %.2f%%\n', mean(abs(currents.nonohmic ./ currents.total)) * 100);
 end

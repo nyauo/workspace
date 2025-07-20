@@ -152,11 +152,6 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
         end
     end
     
-    % 最终检查确保Rs为正值
-    if adjusted_params(2) <= 0
-        fprintf('警告: 最终Rs为负值或零，已调整为正值\n');
-        adjusted_params(2) = 1; % 设置为一个合理的小正值
-    end
     
     % 计算最终拟合结果
     %fit_results.JD = diodeModel(data_V, adjusted_params, config);

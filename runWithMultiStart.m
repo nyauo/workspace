@@ -70,8 +70,6 @@ if use_parallel
     parfor k = 1:nStart
         if k == 1
             start = x0;
-        if isempty(lb) || isempty(ub)
-            start = x0 + randn(size(x0)) .* noiseScale;
         else
             if isempty(lb) || isempty(ub)
                 start = x0 + randn(size(x0)) .* noiseScale;

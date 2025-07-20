@@ -1,9 +1,10 @@
 function params = initializeParameters(data_V, data_JD, config)
-    % 初始参数 [J0, Rs, Rsh, k]
-    % J0: 饱和电流，主要影响正向特性
+    % 初始参数 [J01, Rs, Rsh, k, J02]
+    % J01: 主二极管饱和电流，主要影响正向特性
     % Rs: 串联电阻，影响高电流区域的线性度
     % Rsh: 并联电阻，主要影响低电压区域的泄漏电流
     % k: 非欧姆系数，对负电压区域的拟合尤为重要
+    % J02: 隧穿饱和电流，用于负区或高场效应
     
     % 使用LambertW函数方法估计初始参数
     fprintf('使用Lambert W函数估计初始参数...\n');
@@ -75,25 +76,27 @@ function params = initializeParameters(data_V, data_JD, config)
     
     % 估计非欧姆系数k - 根据负电压区域的数据
     k_est = 5e-7; % 初始值，后续会优化
+    J02_est = 1e-8; % 隧穿饱和电流估计
     
     % 输出估计的参数
     fprintf('Lambert W估计的参数:\n');
-    fprintf('J0 = %.6e A\n', J0_est);
+    fprintf('J01 = %.6e A\n', J0_est);
     fprintf('Rs = %.6e Ohm\n', Rs_est);
     fprintf('Rsh = %.6e Ohm\n', Rsh_est);
+    fprintf('J02 = %.6e A\n', J02_est);
     
     % 设置参数
-    params.x0 = [J0_est, Rs_est, Rsh_est, k_est];
+    params.x0 = [J0_est, Rs_est, Rsh_est, k_est, J02_est];
     
     % 参数范围设置
-    params.ub = [1e-5, 1e3, 1e9, 1e-4];    % 上界
-    params.lb = [1e-9, 1e1, 1e5, 1e-8];    % 下界
+    params.ub = [1e-5, 1e3, 1e9, 1e-4, 1e-3];    % 上界
+    params.lb = [1e-9, 1e1, 1e5, 1e-8, 1e-12];    % 下界
     
     % 确保初始值在范围内
     params.x0 = min(max(params.x0, params.lb), params.ub);
     
     % 缩放因子，使各参数量级相近
-    params.scaleFactors = [1e-7, 1e2, 1e6, 1e-6];
+    params.scaleFactors = [1e-7, 1e2, 1e6, 1e-6, 1e-8];
 end
 
 % 辅助函数：求解J0的目标函数

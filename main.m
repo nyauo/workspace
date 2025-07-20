@@ -52,13 +52,13 @@ function main()
                     
                     % 参数范围设置
                     params.ub = [1e-6, 1e4, 1e10, 1e-5, 1e-3];    % 上界
-                    params.lb = [1e-12, 1e1, 1e5, 1e-10, 1e-12];   % 下界
+                    params.lb = [1e-10, 1e1, 1e5, 1e-10, 1e-9];   % 下界
                     
                     % 确保初始值在范围内
                     params.x0 = min(max(params.x0, params.lb), params.ub);
                     
                     % 缩放因子
-                    params.scaleFactors = [1e-9, 1e3, 1e7, 1e-8, 1e-8];
+                    params.scaleFactors = [1e-9, 1e2, 1e5, 1e-8, 1e-6];
                     
                     % 显示加载的参数
                     fprintf('加载的参数:\n');

@@ -5,10 +5,11 @@ function [optimized_params, fit_results] = performFitting(data_V, data_JD, param
         
         % 打印初始参数
         fprintf('\n初始参数（使用Lambert W函数估计）：\n');
-        fprintf('J0 = %.6e A\n', params.x0(1));
-        fprintf('Rs = %.6e Ohm\n', params.x0(2));
+        fprintf('J01 = %.6e A\n', params.x0(1));
+        fprintf('Rs  = %.6e Ohm\n', params.x0(2));
         fprintf('Rsh = %.6e Ohm\n', params.x0(3));
-        fprintf('k = %.6e\n', params.x0(4));
+        fprintf('k   = %.6e\n', params.x0(4));
+        fprintf('J02 = %.6e A\n', params.x0(5));
         
         % 确保参数物理合理性
         if params.x0(2) <= 0  % Rs必须为正
@@ -83,7 +84,7 @@ function [x0_scaled, rel_errors] = fit_negative_region(data_V, data_JD, x0_scale
         neg_V = data_V(neg_idx);
         neg_JD = data_JD(neg_idx);
         x0_limited = x0_scaled;
-        param_mask = [false, false, true, true];
+        param_mask = [false, false, true, true, false];
         neg_errFun = @(x_opt) errorFunctionPartial(x_opt, x0_limited, param_mask, neg_V, neg_JD, params, config, config.regularization.prior, []);
         x0_neg_opt = x0_scaled(param_mask);
         lb_neg = params.lb(param_mask) ./ params.scaleFactors(param_mask);
@@ -114,7 +115,7 @@ function [x0_scaled, rel_errors] = fit_positive_region(data_V, data_JD, x0_scale
         fprintf('优化低正电压区域 (0 - 0.15V)...\n');
         low_pos_V = data_V(low_pos_idx);
         low_pos_JD = data_JD(low_pos_idx);
-        param_mask = [true, false, false, false];
+        param_mask = [true, false, false, false, false];
         low_pos_prev = prev_errors(low_pos_idx);
         low_pos_errFun = @(x_opt) errorFunctionPartial(x_opt, x0_scaled, param_mask, low_pos_V, low_pos_JD, params, config, config.regularization.prior, low_pos_prev);
         x0_low_pos_opt = x0_scaled(param_mask);
@@ -139,7 +140,7 @@ function [x0_scaled, rel_errors] = fit_positive_region(data_V, data_JD, x0_scale
         fprintf('优化高正电压区域 (>0.15V)...\n');
         high_pos_V = data_V(high_pos_idx);
         high_pos_JD = data_JD(high_pos_idx);
-        param_mask = [false, true, false, false];
+        param_mask = [false, true, false, false, false];
         high_pos_prev = prev_errors(high_pos_idx);
         high_pos_errFun = @(x_opt) errorFunctionPartial(x_opt, x0_scaled, param_mask, high_pos_V, high_pos_JD, params, config, config.regularization.prior, high_pos_prev);
         x0_high_pos_opt = x0_scaled(param_mask);
@@ -170,7 +171,7 @@ function [x0_scaled, rel_errors] = fit_positive_region(data_V, data_JD, x0_scale
         fprintf('\n综合优化正电压区域...\n');
         pos_V = data_V(pos_idx);
         pos_JD = data_JD(pos_idx);
-        param_mask = [true, true, false, false];
+        param_mask = [true, true, false, false, false];
         pos_prev = prev_errors(pos_idx);
         pos_errFun = @(x_opt) errorFunctionPartial(x_opt, x0_scaled, param_mask, pos_V, pos_JD, params, config, config.regularization.prior, pos_prev);
         x0_pos_opt = x0_scaled(param_mask);
@@ -317,7 +318,7 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     pos_errors = relative_errors(pos_idx);
     if mean(pos_errors) > 2*mean(neg_errors) && mean(pos_errors) > 10
         fprintf('\n正区域拟合效果较差，尝试单独优化正区域参数...\n');
-        param_mask = [true, true, false, false];
+        param_mask = [true, true, false, false, false];
         pos_errFun = @(x_opt) errorFunctionEnhancedPositive(x_opt, optimized_params ./ params.scaleFactors, param_mask, data_V, data_JD, params, config, config.regularization.prior, relative_errors);
         x0_pos_opt = optimized_params(param_mask) ./ params.scaleFactors(param_mask);
         lb_pos = params.lb(param_mask) ./ params.scaleFactors(param_mask);
@@ -450,10 +451,10 @@ end
     fprintf('相对误差: %.2f%%\n', max_error);
 
     fprintf('\n拟合参数：\n');
-    fprintf('J0 = %.6e A\n', optimized_params(1));
-    fprintf('Rs = %.6e Ohm\n', optimized_params(2));
-    fprintf('Rsh = %.6e Ohm\n', optimized_params(3));
-    fprintf('k = %.6e\n', optimized_params(4));
+    fprintf('J01 = %.6e A\n', optimized_params(1));
+    fprintf('Rs  = %.6e Ohm\n', optimized_params(2));
+    fprintf('k   = %.6e\n', optimized_params(4));
+    fprintf('J02 = %.6e A\n', optimized_params(5));
 end
 
 

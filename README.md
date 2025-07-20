@@ -44,6 +44,13 @@ Interactive adjustments, when chosen, are written to `adjusted_params_<timestamp
 `lambda * ((x - prior).^2)` is appended to the residuals. Set `config.regularization.prior` and `config.regularization.lambda` in `loadConfig.m` to bias
 the optimisation toward expected parameter values.
 
+## Additional physical parameters
+
+The model now includes a second saturation current `J02` describing tunnelling
+effects. Typical magnitudes lie between `1e-12` and `1e-3` A depending on the
+device. Its ideality factor `n2` (default `5`) enters the exponential term via
+`A2 = q/(kb*T*n2)`.
+
 ## Optimisation thresholds
 
 The structure `config.optimization` defines stopping criteria for the global fit:

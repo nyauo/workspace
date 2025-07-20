@@ -92,6 +92,18 @@ function params = initializeParameters(data_V, data_JD, config)
     params.ub = [1e-5, 1e3, 1e9, 1e-4, 1e-3];    % 上界
     params.lb = [1e-9, 1e1, 1e5, 1e-8, 1e-12];    % 下界
     
+    % J02 必须在 10*J01 与 1000*J01 之间
+    j02_min = 10 * params.x0(1);
+    j02_max = 1000 * params.x0(1);
+    if params.x0(5) < j02_min
+        warning('J02=%.2e 小于 10*J01，已调整为 %.2e', params.x0(5), j02_min);
+        params.x0(5) = j02_min;
+    elseif params.x0(5) > j02_max
+        warning('J02=%.2e 大于 1000*J01，已调整为 %.2e', params.x0(5), j02_max);
+        params.x0(5) = j02_max;
+    end
+    params.lb(5) = max(params.lb(5), j02_min);
+    params.ub(5) = max(params.ub(5), j02_max);
     % 确保初始值在范围内
     params.x0 = min(max(params.x0, params.lb), params.ub);
     

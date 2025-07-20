@@ -48,8 +48,11 @@ the optimisation toward expected parameter values.
 
 The model now includes a second saturation current `J02` describing tunnelling
 effects. Typical magnitudes lie between `1e-12` and `1e-3` A depending on the
-device. Its ideality factor `n2` (default `5`) enters the exponential term via
-`A2 = q/(kb*T*n2)`.
+device. Its ideality factor `n2` is chosen at run time within
+`config.physics.n2_range` (default `[2 8]`). If you simply press enter when
+prompted, the midpoint of this range is used. The exponential term uses this
+value via `A2 = q/(kb*T*n2)`.
+
 
 ## Optimisation thresholds
 

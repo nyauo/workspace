@@ -15,16 +15,15 @@ function saveResults(data_V, data_JD, params, fit_results, currents)
     % 导出详细数据到CSV
     csv_filename = sprintf('fit_data_%s.csv', timestamp);
     fid = fopen(csv_filename, 'w');
-    fprintf(fid, 'Voltage(V),Measured_Current(A),Fitted_Current(A),Diode_Current(A),Ohmic_Current(A),Nonohmic_Current(A),Relative_Error(%%)\n');
-    
+    fprintf(fid, 'Voltage(V),Measured_Current(A),Fitted_Current(A),Diode_Current(A),Tunnel_Current(A),Ohmic_Current(A),Nonohmic_Current(A),Relative_Error(%%)\n');
     % 计算相对误差
     rel_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
     
     % 写入数据
     for i = 1:length(data_V)
-        fprintf(fid, '%.6e,%.6e,%.6e,%.6e,%.6e,%.6e,%.2f\n', ...
+        fprintf(fid, '%.6e,%.6e,%.6e,%.6e,%.6e,%.6e,%.6e,%.2f\n', ...
             data_V(i), data_JD(i), fit_results.JD(i), ...
-            currents.diode(i), currents.ohmic(i), currents.nonohmic(i), ...
+            currents.diode(i), currents.tunnel(i), currents.ohmic(i), currents.nonohmic(i), ...
             rel_errors(i));
     end
     fclose(fid);
@@ -34,10 +33,11 @@ function saveResults(data_V, data_JD, params, fit_results, currents)
     params_filename = sprintf('fit_params_%s.txt', timestamp);
     fid = fopen(params_filename, 'w');
     fprintf(fid, '拟合参数:\n');
-    fprintf(fid, 'J0 = %.6e A\n', params(1));
+    fprintf(fid, 'J01 = %.6e A\n', params(1));
     fprintf(fid, 'Rs = %.6e Ohm\n', params(2));
     fprintf(fid, 'Rsh = %.6e Ohm\n', params(3));
-    fprintf(fid, 'k = %.6e\n\n', params(4));
+    fprintf(fid, 'k = %.6e\n', params(4));
+    fprintf(fid, 'J02 = %.6e A\n\n', params(5));
     
     % 添加误差统计
     fprintf(fid, '拟合误差统计:\n');

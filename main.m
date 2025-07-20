@@ -51,14 +51,14 @@ function main()
                     params.x0 = loaded_data.params;
                     
                     % 参数范围设置
-                    params.ub = [1e-6, 1e4, 1e10, 1e-5];    % 上界
-                    params.lb = [1e-12, 1e1, 1e5, 1e-10];    % 下界
+                    params.ub = [1e-6, 1e4, 1e10, 1e-5, 1e-3];    % 上界
+                    params.lb = [1e-12, 1e1, 1e5, 1e-10, 1e-12];   % 下界
                     
                     % 确保初始值在范围内
                     params.x0 = min(max(params.x0, params.lb), params.ub);
                     
                     % 缩放因子
-                    params.scaleFactors = [1e-9, 1e3, 1e7, 1e-8];
+                    params.scaleFactors = [1e-9, 1e3, 1e7, 1e-8, 1e-8];
                     
                     % 显示加载的参数
                     fprintf('加载的参数:\n');
@@ -66,6 +66,7 @@ function main()
                     fprintf('Rs = %.6e Ohm\n', params.x0(2));
                     fprintf('Rsh = %.6e Ohm\n', params.x0(3));
                     fprintf('k = %.6e\n', params.x0(4));
+                    fprintf('J02 = %.6e A\n', params.x0(5));
                 else
                     fprintf('文件格式错误，将使用Lambert W函数估计初始参数\n');
                     params = initializeParameters(data_V, data_JD, config);

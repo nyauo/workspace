@@ -47,10 +47,9 @@ function [optimized_params, fit_results] = performFitting(data_V, data_JD, param
         [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm, optcfg);
         optimized_params = enforceJ02Range(optimized_params);
         
-        % 检查误差是否满足阈值，否则在小范围内调整m重新拟合
+        % Check errors and adjust m in a small range when they are large
         rel = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
-        if mean(rel) >= config.optimization.target_rel_error || ...
-                max(rel) >= config.optimization.target_max_error
+        if mean(rel) >= 2 || max(rel) >= 5
             fprintf('未达到误差阈值，尝试在%.1f到%.1f范围内调整m...\n', ...
                 config.optimization.m_range(1), config.optimization.m_range(2));
             best_err = mean(rel);
@@ -214,13 +213,8 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     fit_results_lm.resnorm = resnorm_lm;
     relative_errors_lm = abs((fit_results_lm.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
     max_err_lm = max(relative_errors_lm);
-    if mean(relative_errors_lm) < config.optimization.target_rel_error && ...
-            max_err_lm < config.optimization.target_max_error
-        fprintf('平均相对误差 %.2f%%, 最大相对误差 %.2f%% 已满足收敛标准\n', mean(relative_errors_lm), max_err_lm);
-        optimized_params = optimized_params_lm;
-        fit_results = fit_results_lm;
-        return;
-    end
+
+
 
     fprintf('\n第四阶段：使用trust-region-reflective算法进行拟合...\n');
     options_tr = optimoptions('lsqnonlin', ...
@@ -247,13 +241,7 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     mean_err_tr = mean(relative_errors_tr);
     max_err_tr = max(relative_errors_tr);
     max_err_tr = max(relative_errors_tr);
-    if mean(relative_errors_tr) < config.optimization.target_rel_error && ...
-            max_err_tr < config.optimization.target_max_error
-        fprintf('平均相对误差 %.2f%%, 最大相对误差 %.2f%% 已满足收敛标准\n', mean(relative_errors_tr), max_err_tr);
-        optimized_params = optimized_params_tr;
-        fit_results = fit_results_tr;
-        return;
-    end
+
     
     fprintf('\n比较两种算法的结果：\n');
     fprintf('Levenberg-Marquardt: 平均相对误差 = %.2f%%, 最大相对误差 = %.2f%%\n', ...
@@ -366,9 +354,7 @@ end
     fprintf('平均相对误差: %.2f%%\n', avg_rel);
     prev_avg_rel = avg_rel;
 
-    while (avg_rel >= config.optimization.target_rel_error || ...
-           max_rel >= config.optimization.target_max_error) && ...
-           attempt < config.optimization.max_attempts
+    while attempt < config.optimization.max_attempts
         fprintf('误差未满足阈值，尝试再次优化 (%d/%d)...\n', ...
             attempt + 1, config.optimization.max_attempts);
         options_lm.MaxIterations = options_lm.MaxIterations * 2;
@@ -387,12 +373,8 @@ end
         attempt = attempt + 1;
     end
     
-    if avg_rel < config.optimization.target_rel_error && ...
-            max_rel < config.optimization.target_max_error
-        fprintf('结果满足收敛标准 %.2f%% / %.2f%%\n', config.optimization.target_rel_error, config.optimization.target_max_error);
-        else
-        fprintf('未能达到收敛标准 %.2f%% / %.2f%%\n', config.optimization.target_rel_error, config.optimization.target_max_error);
-    end
+    fprintf('最终平均相对误差: %.2f%%\n', avg_rel);
+    fprintf('最终最大相对误差: %.2f%%\n', max_rel);
     fprintf('中位相对误差: %.2f%%\n', median(relative_errors));
     fprintf('负电压区域平均相对误差: %.2f%%\n', mean(neg_errors));
 

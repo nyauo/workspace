@@ -29,6 +29,7 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
     h_diode = semilogy(data_V, abs(currents.diode), 'b--', 'DisplayName', '二极管电流');
     h_ohmic = semilogy(data_V, abs(currents.ohmic), 'g--', 'DisplayName', '欧姆电流');
     h_nonohmic = semilogy(data_V, abs(currents.nonohmic), 'm--', 'DisplayName', '非欧姆电流');
+    h_tunnel = semilogy(data_V, abs(currents.tunnel), 'c--', 'DisplayName', '隧穿电流');
     xlabel('电压 (V)');
     ylabel('电流密度 (A)');
     title('电流-电压特性 (对数尺度)');
@@ -45,26 +46,27 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
     
     % 显示当前参数值
     annotation('textbox', [0.01, 0.01, 0.98, 0.08], ...
-        'String', sprintf('J0: %.2e A   Rs: %.2e Ohm   Rsh: %.2e Ohm   k: %.2e   调整步长: %.2f', ...
-        adjusted_params(1), adjusted_params(2), adjusted_params(3), adjusted_params(4), adjustment_factor), ...
+        'String', sprintf('J01: %.2e A   Rs: %.2e Ohm   Rsh: %.2e Ohm   k: %.2e   J02: %.2e A   调整步长: %.2f', ...
+        adjusted_params(1), adjusted_params(2), adjusted_params(3), adjusted_params(4), adjusted_params(5), adjustment_factor), ...
         'EdgeColor', 'none', 'FontSize', 10, 'HorizontalAlignment', 'center');
     
     % 持续调整直到用户满意
     while true
         % 显示调整选项
-        fprintf('\n当前参数: J0=%.2e, Rs=%.2e, Rsh=%.2e, k=%.2e\n', ...
-            adjusted_params(1), adjusted_params(2), adjusted_params(3), adjusted_params(4));
+        fprintf('\n当前参数: J01=%.2e, Rs=%.2e, Rsh=%.2e, k=%.2e, J02=%.2e\n', ...
+            adjusted_params(1), adjusted_params(2), adjusted_params(3), adjusted_params(4), adjusted_params(5));
         fprintf('平均相对误差: %.2f%%\n', avg_error);
         fprintf('\n参数调整选项:\n');
-        fprintf('1: 增加 J0  2: 减少 J0\n');
-        fprintf('3: 增加 Rs  4: 减少 Rs\n');
-        fprintf('5: 增加 Rsh 6: 减少 Rsh\n');
-        fprintf('7: 增加 k   8: 减少 k\n');
-        fprintf('9: 更改调整步长 (当前: %.2f)\n', adjustment_factor);
+        fprintf('1: 增加 J01 2: 减少 J01\n');
+        fprintf('3: 增加 Rs   4: 减少 Rs\n');
+        fprintf('5: 增加 Rsh  6: 减少 Rsh\n');
+        fprintf('7: 增加 k    8: 减少 k\n');
+        fprintf('9: 增加 J02 10: 减少 J02\n');
+        fprintf('11: 更改调整步长 (当前: %.2f)\n', adjustment_factor);
         fprintf('0: 结束调整并保存结果\n');
         
         % 获取用户输入并确保是数值类型
-        choice_str = input('请选择操作 (0-9): ', 's');
+        choice_str = input('请选择操作 (0-11): ', 's');
         choice = str2double(choice_str);
         
         % 检查是否为有效数字输入
@@ -75,7 +77,7 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
         
         if choice == 0
             break;
-        elseif choice == 9
+        elseif choice == 11
             % 调整步长
             new_factor_str = input(sprintf('输入新的调整步长 (当前: %.2f): ', adjustment_factor), 's');
             new_factor = str2double(new_factor_str);
@@ -85,7 +87,7 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
                 fprintf('输入无效，保持当前步长: %.2f\n', adjustment_factor);
             end
             continue;
-        elseif choice >= 1 && choice <= 8
+        elseif choice >= 1 && choice <= 10
             % 确定要调整的参数索引
             param_idx = ceil(choice / 2);
             
@@ -115,6 +117,8 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
                 adjusted_params(param_idx) = max(1e4, adjusted_params(param_idx));
             elseif param_idx == 4 % k
                 adjusted_params(param_idx) = max(1e-10, adjusted_params(param_idx));
+            elseif param_idx == 5 % J02
+                adjusted_params(param_idx) = min(max(1e-12, adjusted_params(param_idx)), 1e-3);
             end
             
             % 重新计算拟合和误差
@@ -129,6 +133,7 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
             %set(h_fit, 'YData', abs(fit_results.JD));
             set(h_fit, 'YData', abs(currents.total));
             set(h_diode, 'YData', abs(currents.diode));
+            set(h_tunnel, 'YData', abs(currents.tunnel));
             set(h_ohmic, 'YData', abs(currents.ohmic));
             set(h_nonohmic, 'YData', abs(currents.nonohmic));
             set(h_error, 'YData', errors);
@@ -137,13 +142,13 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
             % 更新参数显示
             delete(findall(gcf, 'Type', 'annotation'));
             annotation('textbox', [0.01, 0.01, 0.98, 0.08], ...
-                'String', sprintf('J0: %.2e A   Rs: %.2e Ohm   Rsh: %.2e Ohm   k: %.2e   调整步长: %.2f', ...
-                adjusted_params(1), adjusted_params(2), adjusted_params(3), adjusted_params(4), adjustment_factor), ...
+                'String', sprintf('J01: %.2e A   Rs: %.2e Ohm   Rsh: %.2e Ohm   k: %.2e   J02: %.2e A   调整步长: %.2f', ...
+                adjusted_params(1), adjusted_params(2), adjusted_params(3), adjusted_params(4), adjusted_params(5), adjustment_factor), ...
                 'EdgeColor', 'none', 'FontSize', 10, 'HorizontalAlignment', 'center');
             
             drawnow;
         else
-            fprintf('无效的选择，请输入0-9之间的数字\n');
+            fprintf('无效的选择，请输入0-11之间的数字\n');
         end
     end
     

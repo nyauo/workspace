@@ -54,17 +54,12 @@ prompted, the midpoint of this range is used. The exponential term uses this
 value via `A2 = q/(kb*T*n2)`.
 
 
-## Optimisation thresholds
+## Optimisation attempts
 
-The structure `config.optimization` defines stopping criteria for the global fit:
-
-- `target_rel_error` – mean relative error threshold in percent (default `2`).
-- `target_max_error` – maximum relative error threshold in percent (default
-  `Inf`).
-- `max_attempts` – number of times `final_optimization` may be retried when the
-  thresholds are not met (default `3`).
-
-`performFitting` only terminates successfully when both conditions are met.
+`config.optimization.max_attempts` sets how many times the final optimisation
+stage is allowed to run.  Each retry increases the iteration limits and stops
+early when the improvement between attempts falls below
+`config.optimization.improvement_threshold`.
 
 ### Optimisation methods
 

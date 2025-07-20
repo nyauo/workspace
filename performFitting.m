@@ -153,10 +153,7 @@ function [x0_scaled, rel_errors] = fit_positive_region(data_V, data_JD, x0_scale
         x_all = x0_scaled .* params.scaleFactors;
         fit_all = diodeModel(data_V, x_all, config);
         prev_errors = abs((fit_all - data_JD) ./ (abs(data_JD) + eps));
-        if x0_scaled(2) * params.scaleFactors(2) <= 0
-            fprintf('警告: Rs为负值或零，正在调整为正值\n');
-            x0_scaled(2) = params.lb(2) / params.scaleFactors(2);
-        end
+        
         
         x_actual_high_pos = x0_scaled .* params.scaleFactors;
         fit_JD_high_pos = diodeModel(high_pos_V, x_actual_high_pos, config);
@@ -180,11 +177,7 @@ function [x0_scaled, rel_errors] = fit_positive_region(data_V, data_JD, x0_scale
         optcfg_pos = optcfg;
         [x_pos_opt, ~] = runWithMultiStart(pos_errFun, x0_pos_opt, lb_pos, ub_pos, options_lm, optcfg_pos);
         x0_scaled(param_mask) = x_pos_opt;
-        if x0_scaled(2) * params.scaleFactors(2) <= 0
-            fprintf('警告: Rs为负值或零，正在调整为正值\n');
-            x0_scaled(2) = params.lb(2) / params.scaleFactors(2);
-        end
-        
+
         x_actual_pos = x0_scaled .* params.scaleFactors;
         fit_JD_pos = diodeModel(pos_V, x_actual_pos, config);
         pos_rel_errors = abs((fit_JD_pos - pos_JD) ./ (abs(pos_JD) + eps)) * 100;
@@ -244,10 +237,7 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     end
     [x_scaled_optimized_tr, resnorm_tr] = runWithMultiStart(errFun, x_scaled_optimized, params.lb ./ params.scaleFactors, params.ub ./ params.scaleFactors, options_tr, optcfg);
     residual_tr = []; exitflag_tr = []; output_tr = [];
-    if x_scaled_optimized_tr(2) * params.scaleFactors(2) <= 0
-        fprintf('警告: TR算法产生了负值或零的Rs，正在调整为正值\n');
-        x_scaled_optimized_tr(2) = params.lb(2) / params.scaleFactors(2);
-    end
+
     optimized_params_tr = x_scaled_optimized_tr .* params.scaleFactors;
     fit_results_tr.JD = diodeModel(data_V, optimized_params_tr, config);
     fit_results_tr.resnorm = resnorm_tr;
@@ -297,13 +287,6 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
         relative_errors = relative_errors_tr;
     end
 
-    if optimized_params(2) <= 0
-        fprintf('警告: 最终拟合结果中Rs为负值或零，已调整为正值\n');
-        optimized_params(2) = max(params.lb(2), 10);
-        fit_results.JD = diodeModel(data_V, optimized_params, config);
-        relative_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
-    end
-
     % 使用当前结果作为起点再次局部优化，以减小局部最小值的风险
     errFun_final = @(x) errorFunction(x, data_V, data_JD, params, config, config.regularization.prior);
     x_scaled_temp = optimized_params ./ params.scaleFactors;
@@ -326,10 +309,7 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
         options_pos = optimoptions('lsqnonlin', 'Display', 'iter-detailed', 'Algorithm', 'levenberg-marquardt', 'FunctionTolerance', 1e-12, 'OptimalityTolerance', 1e-12, 'StepTolerance', 1e-12, 'MaxFunctionEvaluations', 3000, 'MaxIterations', 2000);
         optcfg_enh = optcfg;
         [x_pos_opt, ~] = runWithMultiStart(pos_errFun, x0_pos_opt, lb_pos, ub_pos, options_pos, optcfg_enh);
-        if x_pos_opt(2) * params.scaleFactors(2) <= 0
-            fprintf('警告: 正区域优化产生了负值或零的Rs，正在调整为正值\n');
-            x_pos_opt(2) = lb_pos(2);
-        end
+
         
         x_scaled_enhanced = optimized_params ./ params.scaleFactors;
         x_scaled_enhanced(param_mask) = x_pos_opt;

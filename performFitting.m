@@ -202,19 +202,21 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     if nargin < 9
         retry_count = 0;
     end
-    fprintf('\n第三阶段：全区域拟合...\n');
-    errFun = @(x) errorFunction(x, data_V, data_JD, params, config, config.regularization.prior);
-    [x_scaled_optimized,resnorm_lm]=runWithMultiStart(errFun,x0_scaled,params.lb./ params.scaleFactors,params.ub ./ params.scaleFactors,options_lm,optcfg);
-    residual_lm = []; exitflag_lm = []; output_lm = [];
-    if x_scaled_optimized(2) * params.scaleFactors(2) <= 0
-        fprintf('警告: LM算法产生了负值或零的Rs，正在调整为正值\n');
-        x_scaled_optimized(2) = params.lb(2) / params.scaleFactors(2);
-    end
-    optimized_params_lm = x_scaled_optimized .* params.scaleFactors;
-    fit_results_lm.JD = diodeModel(data_V, optimized_params_lm, config);
-    fit_results_lm.resnorm = resnorm_lm;
-    relative_errors_lm = abs((fit_results_lm.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
-    max_err_lm = max(relative_errors_lm);
+    prev_avg_rel = Inf;
+    while true
+        fprintf('\n第三阶段：全区域拟合...\n');
+        errFun = @(x) errorFunction(x, data_V, data_JD, params, config, config.regularization.prior);
+        [x_scaled_optimized,resnorm_lm]=runWithMultiStart(errFun,x0_scaled,params.lb./ params.scaleFactors,params.ub ./ params.scaleFactors,options_lm,optcfg);
+        residual_lm = []; exitflag_lm = []; output_lm = [];
+        if x_scaled_optimized(2) * params.scaleFactors(2) <= 0
+            fprintf('警告: LM算法产生了负值或零的Rs，正在调整为正值\n');
+            x_scaled_optimized(2) = params.lb(2) / params.scaleFactors(2);
+        end
+        optimized_params_lm = x_scaled_optimized .* params.scaleFactors;
+        fit_results_lm.JD = diodeModel(data_V, optimized_params_lm, config);
+        fit_results_lm.resnorm = resnorm_lm;
+        relative_errors_lm = abs((fit_results_lm.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
+        max_err_lm = max(relative_errors_lm);
 
 
 

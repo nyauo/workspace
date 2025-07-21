@@ -320,30 +320,9 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
         end
 end
 
-    % 计算欧姆与非欧姆电流的平均绝对值并检查其比值
-    % 如果非欧姆电流显著大于欧姆电流，可能表明模型不符合物理约束
+    % 计算各分量电流，用于后续分析
     currents = calculateCurrents(data_V, optimized_params, config);
-    % 只在-0.5到-0.3V区间计算平均值以评估两种电流的相对大小
-    region_idx = data_V >= -0.5 & data_V <= -0.3;
-    if ~any(region_idx)
-        region_idx = data_V < 0;
-    end
-    mean_ohmic = mean(abs(currents.ohmic(region_idx)));
-    mean_nonohmic = mean(abs(currents.nonohmic(region_idx)));
-    ratio = mean_nonohmic / (mean_ohmic + eps);
-    ratio_threshold = 1e3;
-    if ratio > ratio_threshold
-        fprintf(['警告: 非欧姆电流与欧姆电流的平均值比率为 %.2e, 超过阈值 %.0f, ' ...
-                '尝试在收紧k上界后重新拟合...\n'], ratio, ratio_threshold);
-        if retry_count < config.optimization.max_retries
-            params.ub(4) = min(params.ub(4), optimized_params(4));
-            [optimized_params, fit_results] = final_optimization(data_V, data_JD, ...
-                optimized_params ./ params.scaleFactors, params, config, options_lm, optcfg, attempt + 1, retry_count + 1);
-            relative_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
-        else
-            fprintf('达到最大重试次数 %d，停止递归。\n', config.optimization.max_retries);
-        end
-    end
+
 
     neg_idx = find(data_V < -0.1);
     neg_errors = relative_errors(neg_idx);

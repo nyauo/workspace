@@ -320,9 +320,6 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
         end
 end
 
-    % 计算各分量电流，用于后续分析
-    currents = calculateCurrents(data_V, optimized_params, config);
-
 
     neg_idx = find(data_V < -0.1);
     neg_errors = relative_errors(neg_idx);

@@ -40,11 +40,15 @@ function [optimized_params, fit_results] = performFitting(data_V, data_JD, param
         else
             optcfg.use_parallel = false;
         end
+
+        % Initialize retry variables
+        attempt = 1;
+        retry_count = 0;
         
        % 分阶段优化
         [x0_scaled, rel_errors] = fit_negative_region(data_V, data_JD, x0_scaled, params, config, options_lm, optcfg);
         [x0_scaled, rel_errors] = fit_positive_region(data_V, data_JD, x0_scaled, params, config, options_lm, rel_errors, optcfg);
-        [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm, optcfg);
+        [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm, optcfg, attempt, retry_count);
         
         % Check errors and adjust m in a small range when they are large
         rel = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;

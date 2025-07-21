@@ -1,28 +1,8 @@
 function main()
     % 加载配置和数据
     config = loadConfig();
-        % Ask user for tunnelling ideality factor within configured range
-    if isfield(config.physics, 'n2_range')
-        default_n2 = mean(config.physics.n2_range);
-        prompt = sprintf('请输入隧穿理想因子 n2 [%.1f-%.1f] (默认 %.1f): ', ...
-            config.physics.n2_range(1), config.physics.n2_range(2), default_n2);
-        user_input = input(prompt, 's');
-        if isempty(user_input)
-            chosen_n2 = default_n2;
-        else
-            val = str2double(user_input);
-            if isnan(val) || val < config.physics.n2_range(1) || val > config.physics.n2_range(2)
-                fprintf('输入无效，使用默认值 %.1f\n', default_n2);
-                chosen_n2 = default_n2;
-            else
-                chosen_n2 = val;
-            end
-        end
-        config.physics.n2 = chosen_n2;
-        config.physics.A2 = config.physics.q / ...
-            (config.physics.kb * config.physics.T * config.physics.n2);
-    end
-     % Start a parallel pool if configured
+    % Use fixed tunnelling ideality factor from configuration
+    % Start a parallel pool if configured
     if isfield(config, 'parallel') && config.parallel.use && exist('parpool', 'file')
         if isempty(gcp('nocreate'))
             if isfield(config.parallel, 'poolSize') && ~isempty(config.parallel.poolSize)

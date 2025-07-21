@@ -45,7 +45,6 @@ function [optimized_params, fit_results] = performFitting(data_V, data_JD, param
         [x0_scaled, rel_errors] = fit_negative_region(data_V, data_JD, x0_scaled, params, config, options_lm, optcfg);
         [x0_scaled, rel_errors] = fit_positive_region(data_V, data_JD, x0_scaled, params, config, options_lm, rel_errors, optcfg);
         [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm, optcfg);
-        optimized_params = enforceJ02Range(optimized_params);
         
         % Check errors and adjust m in a small range when they are large
         rel = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
@@ -60,7 +59,6 @@ function [optimized_params, fit_results] = performFitting(data_V, data_JD, param
             for m_val = m_values
                 config.physics.m = m_val;
                 [tmp_params, tmp_fit] = final_optimization(data_V, data_JD, best_params ./ params.scaleFactors, params, config, options_lm, optcfg);
-                tmp_params = enforceJ02Range(tmp_params);
                 tmp_rel = abs((tmp_fit.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
                 tmp_err = mean(tmp_rel);
                 if tmp_err < best_err
@@ -340,7 +338,6 @@ end
         options_lm.MaxFunctionEvaluations = options_lm.MaxFunctionEvaluations * 2;
         [optimized_params, fit_results] = final_optimization(data_V, data_JD, ...
         optimized_params ./ params.scaleFactors, params, config, options_lm, optcfg, attempt + 1, retry_count);
-        optimized_params = enforceJ02Range(optimized_params);
         relative_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
         max_rel = max(relative_errors);
         avg_rel = mean(relative_errors);
@@ -558,18 +555,5 @@ function err = errorFunctionEnhancedPositive(x_opt, x0, param_mask, data_V, data
     if isfield(config, 'regularization') && config.regularization.lambda > 0
         penalty = sqrt(config.regularization.lambda) * (x_actual(:) - prior(:));
         err = [err; penalty];
-    end
-end
-
-% 检查 J02 是否在 10*J01 与 1000*J01 之间
-function params_vec = enforceJ02Range(params_vec)
-    j02_min = 10 * params_vec(1);
-    j02_max = 1000 * params_vec(1);
-    if params_vec(5) < j02_min
-        warning('J02=%.2e 小于 10*J01，已调整为 %.2e', params_vec(5), j02_min);
-        params_vec(5) = j02_min;
-    elseif params_vec(5) > j02_max
-        warning('J02=%.2e 大于 1000*J01，已调整为 %.2e', params_vec(5), j02_max);
-        params_vec(5) = j02_max;
     end
 end

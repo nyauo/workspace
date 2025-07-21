@@ -41,14 +41,13 @@ function [optimized_params, fit_results] = performFitting(data_V, data_JD, param
             optcfg.use_parallel = false;
         end
 
-        % Initialize retry variables
+        % Initialize attempt counter
         attempt = 1;
-        retry_count = 0;
         
        % 分阶段优化
         [x0_scaled, rel_errors] = fit_negative_region(data_V, data_JD, x0_scaled, params, config, options_lm, optcfg);
         [x0_scaled, rel_errors] = fit_positive_region(data_V, data_JD, x0_scaled, params, config, options_lm, rel_errors, optcfg);
-        [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm, optcfg, attempt, retry_count);
+        [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm, optcfg, attempt);
         
         % Check errors and adjust m in a small range when they are large
         rel = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
@@ -195,13 +194,11 @@ function [x0_scaled, rel_errors] = fit_positive_region(data_V, data_JD, x0_scale
     rel_errors = abs((fit_all - data_JD) ./ (abs(data_JD) + eps));    
 end
 
-function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm, optcfg, attempt, retry_count)
+function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm, optcfg, attempt)
     if nargin < 8
         attempt = 1;
     end
-    if nargin < 9
-        retry_count = 0;
-    end
+    
     prev_avg_rel = Inf;
     while true
         fprintf('\n第三阶段：全区域拟合...\n');
@@ -342,7 +339,7 @@ end
         options_lm.MaxIterations = options_lm.MaxIterations * 2;
         options_lm.MaxFunctionEvaluations = options_lm.MaxFunctionEvaluations * 2;
         [optimized_params, fit_results] = final_optimization(data_V, data_JD, ...
-        optimized_params ./ params.scaleFactors, params, config, options_lm, optcfg, attempt + 1, retry_count);
+        optimized_params ./ params.scaleFactors, params, config, options_lm, optcfg, attempt + 1);
         relative_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
         max_rel = max(relative_errors);
         avg_rel = mean(relative_errors);

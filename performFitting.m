@@ -242,7 +242,6 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     relative_errors_tr = abs((fit_results_tr.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
     mean_err_tr = mean(relative_errors_tr);
     max_err_tr = max(relative_errors_tr);
-    max_err_tr = max(relative_errors_tr);
 
     
     fprintf('\n比较两种算法的结果：\n');

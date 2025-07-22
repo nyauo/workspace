@@ -329,6 +329,10 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     fprintf('最大相对误差: %.2f%%\n', max_rel);
     avg_rel = mean(relative_errors);
     fprintf('平均相对误差: %.2f%%\n', avg_rel);
+    if avg_rel < config.optimization.termination_avg_error
+        fprintf('平均误差 %.2f%% 低于阈值，结束优化。\n', avg_rel);
+        break;
+    end
     prev_avg_rel = avg_rel;
 
     while attempt < config.optimization.max_attempts

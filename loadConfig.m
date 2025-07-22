@@ -22,6 +22,7 @@ function config = loadConfig()
         'method', 'multistart', ...
         'max_attempts', 3, ...     % 最大优化尝试次数
         'improvement_threshold', 0.1, ... % 最小改进幅度 (百分比)
+        'termination_avg_error', 5, ...   % 平均误差阈值，低于此值则提前结束
         'm_range', [2, 3], ...     % 调整m的范围
         'm_step', 0.1 ...          % 调整m的步长
     );

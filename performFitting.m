@@ -396,6 +396,7 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     fprintf('Rs  = %.6e Ohm\n', optimized_params(2));
     fprintf('k   = %.6e\n', optimized_params(4));
     fprintf('J02 = %.6e A\n', optimized_params(5));
+    end
 end
 
 

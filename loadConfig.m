@@ -21,7 +21,6 @@ function config = loadConfig()
         'multistart_points', 5, ...
         'method', 'multistart', ...
         'max_attempts', 3, ...     % 最大优化尝试次数
-(*         'max_retries', 2, ...      % 非欧姆比率过高时的最大递归次数 *)
         'improvement_threshold', 0.1, ... % 最小改进幅度 (百分比)
         'm_range', [2, 3], ...     % 调整m的范围
         'm_step', 0.1 ...          % 调整m的步长

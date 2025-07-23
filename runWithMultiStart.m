@@ -24,9 +24,6 @@ nStart = max(1, optcfg.multistart_points);
 method = lower(optcfg.method);
 use_parallel = optcfg.use_parallel;
 
-nStart = max(1, optcfg.multistart_points);
-method = lower(optcfg.method);
-
 % Prefer MultiStart when available
 if exist('MultiStart', 'class') && strcmp(method, 'multistart')
     if use_parallel && isempty(gcp('nocreate')) && exist('parpool', 'file')

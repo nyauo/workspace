@@ -38,7 +38,7 @@ function plotResults(V, JD_measured, fit_results, currents)
     
     relative_error = abs((currents.total - JD_measured) ./ (abs(JD_measured) + eps)) * 100;
     nz_idx = V ~= 0;  % 忽略零电压点进行误差计算和绘图
-    bar(V, relative_error, 'FaceColor', c_data, 'EdgeColor', 'none');
+       bar(V(nz_idx), relative_error(nz_idx), 'FaceColor', c_data, 'EdgeColor', 'none');
     avg_rel_err = mean(relative_error(nz_idx));
     max_rel_err = max(relative_error(nz_idx));
     xlabel('电压 (V)');

@@ -48,8 +48,10 @@ the optimisation toward expected parameter values.
 
 The model now includes a second saturation current `J02` describing tunnelling
 effects. Typical magnitudes lie between `1e-12` and `1e-3` A depending on the
-device. Its ideality factor `n2` is fixed in `loadConfig.m` (default `5`). The
-exponential term uses this value via `A2 = q/(kb*T*n2)`..
+device. Its ideality factor `n2` can be swept during fitting using
+`config.optimization.n2_range` and `n2_step`. `loadConfig.m` sets a default
+range around `2`. The exponential term uses this value via
+`A2 = q/(kb*T*n2)`.
 
 
 ## Optimisation attempts
@@ -71,7 +73,8 @@ corresponding MATLAB toolboxes or Octave packages.
   before the optimisation stops early.
 - `m_range`/`m_step` – when convergence fails the script sweeps the exponent `m`
   over this range to seek a better fit.
-
+- `n2_range`/`n2_step` – optional sweep of the tunnelling ideality factor when
+  refining the fit.
 
 ### Parallel computing
 

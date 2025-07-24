@@ -1,4 +1,5 @@
 function main()
+    addpath(genpath(fileparts(mfilename("fullpath"))));
     % 加载配置和数据
     config = loadConfig();
     % Use fixed tunnelling ideality factor from configuration

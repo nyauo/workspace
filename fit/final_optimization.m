@@ -96,7 +96,7 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     if mean(pos_errors) > 2*mean(neg_errors) && mean(pos_errors) > 10
         fprintf('\n正区域拟合效果较差，尝试单独优化正区域参数...\n');
         param_mask = [true, true, false, false, false];
-        pos_errFun = @(x_opt) errorFunctionEnhancedPositive(x_opt, optimized_params ./ params.scaleFactors, param_mask, data_V, data_JD, params, config, config.regularization.prior, relative_errors);
+        pos_errFun = @(x_opt) errorFunctionPartialWeighted(x_opt, optimized_params ./ params.scaleFactors, param_mask, data_V, data_JD, params, config, config.regularization.prior, relative_errors);
         x0_pos_opt = optimized_params(param_mask) ./ params.scaleFactors(param_mask);
         lb_pos = params.lb(param_mask) ./ params.scaleFactors(param_mask);
         ub_pos = params.ub(param_mask) ./ params.scaleFactors(param_mask);

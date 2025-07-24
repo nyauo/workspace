@@ -62,7 +62,7 @@ function [optimized_params, fit_results] = performFitting(data_V, data_JD, param
         % Check errors and adjust m in a small range when they are large
         rel = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
         if mean(rel) >= 2 || max(rel) >= 5
-            fprintf('未达到误差阈值，尝试在%.1f到%.1f范围内调整m...\n', ...
+            fprintf('误差仍较大 (平均≥2% 或最大≥5%)，尝试在%.1f到%.1f范围内调整m...\n', ...
                 config.optimization.m_range(1), config.optimization.m_range(2));
             best_err = mean(rel);
             best_params = optimized_params;

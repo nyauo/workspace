@@ -15,16 +15,16 @@ function saveResults(data_V, data_JD, params, fit_results, currents)
     % 导出详细数据到CSV
     csv_filename = sprintf('fit_data_%s.csv', timestamp);
     fid = fopen(csv_filename, 'w');
-    fprintf(fid, 'Voltage(V),Measured_Current(A),Fitted_Current(A),Diode_Current(A),Tunnel_Current(A),Ohmic_Current(A),Nonohmic_Current(A),Relative_Error(%%)\n');
+       fprintf(fid, 'Voltage(V),Measured_Current(A),Fitted_Current(A),Diode_Current(A),Tunnel_Current(A),Ohmic_Current(A),Nonohmic_Current(A),J02(A),Relative_Error(%%)\n');
     % 计算相对误差
     rel_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
     
     % 写入数据
     for i = 1:length(data_V)
-        fprintf(fid, '%.6e,%.6e,%.6e,%.6e,%.6e,%.6e,%.6e,%.2f\n', ...
+        fprintf(fid, '%.6e,%.6e,%.6e,%.6e,%.6e,%.6e,%.6e,%.6e,%.2f\n', ...
             data_V(i), data_JD(i), fit_results.JD(i), ...
             currents.diode(i), currents.tunnel(i), currents.ohmic(i), currents.nonohmic(i), ...
-            rel_errors(i));
+            params(5), rel_errors(i));
     end
     fclose(fid);
     fprintf('拟合数据已导出到CSV文件: %s\n', csv_filename);

@@ -69,26 +69,18 @@ function [optimized_params, fit_results] = performFitting(data_V, data_JD, param
             best_fit = fit_results;
             original_m = config.physics.m;
             m_values = config.optimization.m_range(1):config.optimization.m_step:config.optimization.m_range(2);
-            original_n2 = config.physics.n2;
             for m_val = m_values
                 config.physics.m = m_val;
-                n2_values = config.optimization.n2_range(1):config.optimization.n2_step:config.optimization.n2_range(2);
-                for n2_val = n2_values
-                    config.physics.n2 = n2_val;
-                    config.physics.A2 = config.physics.q / (config.physics.kb * config.physics.T * config.physics.n2);
-                    [tmp_params, tmp_fit] = final_optimization(data_V, data_JD, best_params ./ params.scaleFactors, params, config, options_lm, optcfg);
-                    tmp_rel = abs((tmp_fit.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
-                    tmp_err = mean(tmp_rel);
-                    if tmp_err < best_err
-                        best_err = tmp_err;
-                        best_params = tmp_params;
-                        best_fit = tmp_fit;
-                    end
+                [tmp_params, tmp_fit] = final_optimization(data_V, data_JD, best_params ./ params.scaleFactors, params, config, options_lm, optcfg);
+                tmp_rel = abs((tmp_fit.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
+                tmp_err = mean(tmp_rel);
+                if tmp_err < best_err
+                    best_err = tmp_err;
+                    best_params = tmp_params;
+                    best_fit = tmp_fit;
                 end
             end
             config.physics.m = original_m;
-            config.physics.n2 = original_n2;
-            config.physics.A2 = config.physics.q / (config.physics.kb * config.physics.T * config.physics.n2);
             optimized_params = best_params;
             fit_results = best_fit;
         end

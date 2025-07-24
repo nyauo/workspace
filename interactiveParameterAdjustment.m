@@ -1,4 +1,9 @@
 function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V, data_JD, initial_params, config)
+   % Ensure required folders are on the path
+    scriptDir = fileparts(mfilename('fullpath'));
+    addpath(genpath(fullfile(scriptDir, 'io')));
+    addpath(genpath(fullfile(scriptDir, 'model')));
+
     % 复制初始参数
     adjusted_params = initial_params;
     adjustment_factor = 1.0;

@@ -19,12 +19,12 @@ Run the main routine from the command line:
 ```matlab
 >> main
 ```
-The script prompts whether to load parameters saved from previous runs. It then fits the built-in measurement data, plots the results and asks if you want to save them. Saved files include:
+The script prompts whether to load parameters saved from previous runs. It then fits the built-in measurement data, plots the results and asks if you want to save them. All output files are stored under the `results` folder. Saved files include:
 - `fit_results_<timestamp>.mat` – fitting data and parameters
 - `fit_plot_<timestamp>.png` – generated figure
 - `fit_data_<timestamp>.csv` – exported data table
 - `fit_params_<timestamp>.txt` – summary of fitted parameters
-Interactive adjustments, when chosen, are written to `adjusted_params_<timestamp>.(mat|txt)`.
+Interactive adjustments, when chosen, are written to `adjusted_params_<timestamp>.(mat|txt)` in the same folder.
 
 ## Fitting workflow
 

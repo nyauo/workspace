@@ -22,11 +22,12 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
     nz_idx = data_V ~= 0;
     avg_error = mean(errors(nz_idx));
 
-    % 创建实时更新的图表
-    figure('Name', '交互式参数调整', 'Position', [100, 100, 1200, 800]);
-    
-    % 定义子图结构
-    subplot(2,1,1);
+    % 创建实时更新的图表 - 拟合结果与误差分开显示
+    fitFig = figure('Name','拟合结果','Position',[100 100 600 600]);
+    errFig = figure('Name','误差分析','Position',[750 100 600 400]);
+
+    % 定义颜色并绘制初始拟合结果
+    figure(fitFig);
     c_data   = [107,174,214]/255; % #6BAED6
     c_total  = [251,106, 74]/255; % #FB6A4A
     c_ohmic  = [144,186, 72]/255; % #90BA48
@@ -41,6 +42,8 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
     h_tunnel = semilogy(data_V, abs(currents.tunnel), '--', 'Color', c_tunnel, 'DisplayName', '隧穿电流');
     h_ohmic = semilogy(data_V, abs(currents.ohmic), '--', 'Color', c_ohmic, 'DisplayName', '欧姆电流');
     h_nonohmic = semilogy(data_V, abs(currents.nonohmic), '--', 'Color', c_nonohm, 'DisplayName', '非欧姆电流');
+   xlim([-0.5 0.3]);
+    ylim([1e-11 1e-3]);
     axis square;
     xlabel('电压 (V)');
     ylabel('电流密度 (A)');
@@ -48,16 +51,17 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
     legend('Location', 'best');
     grid on;
     
-    subplot(2,1,2);
+    figure(errFig);
     error_idx = data_V ~= 0;  % 误差计算时忽略零电压点
     h_error = plot(data_V(error_idx), errors(error_idx), 'b.-');
     xlabel('电压 (V)');
     ylabel('相对误差 (%)');
-    %title(sprintf('拟合误差 (平均: %.2f%%)', mean(errors)));
     title(sprintf('拟合误差 (平均: %.2f%%)', avg_error));
+    xlim([-0.5 0.3]);
     grid on;
     
-    % 显示当前参数值
+    % 在拟合图中显示当前参数值
+    set(0,'CurrentFigure',fitFig);
     annotation('textbox', [0.01, 0.01, 0.98, 0.08], ...
         'String', sprintf('J01: %.2e A   Rs: %.2e Ohm   Rsh: %.2e Ohm   k: %.2e   J02: %.2e A   调整步长: %.2f', ...
         adjusted_params(1), adjusted_params(2), adjusted_params(3), adjusted_params(4), adjusted_params(5), adjustment_factor), ...
@@ -143,23 +147,24 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
             avg_error = mean(errors(nz_idx));
 
             % 更新图表
-            %set(h_fit, 'YData', abs(fit_results.JD));
+            set(0,'CurrentFigure',fitFig);
             set(h_fit, 'YData', abs(currents.total));
             set(h_diode, 'YData', abs(currents.diode));
             set(h_tunnel, 'YData', abs(currents.tunnel));
             set(h_ohmic, 'YData', abs(currents.ohmic));
-            set(h_error, 'XData', data_V(error_idx), 'YData', errors(error_idx));
-            set(h_error, 'YData', errors);
-            %title(subplot(2,1,2), sprintf('拟合误差 (平均: %.2f%%)', mean(errors))); 
-            title(subplot(2,1,2), sprintf('拟合误差 (平均: %.2f%%)', avg_error));
-            axis(subplot(2,1,1), 'square');
-            % 更新参数显示
+            xlim([-0.5 0.3]);
+            ylim([1e-11 1e-3]);
+            axis square;
             delete(findall(gcf, 'Type', 'annotation'));
             annotation('textbox', [0.01, 0.01, 0.98, 0.08], ...
                 'String', sprintf('J01: %.2e A   Rs: %.2e Ohm   Rsh: %.2e Ohm   k: %.2e   J02: %.2e A   调整步长: %.2f', ...
                 adjusted_params(1), adjusted_params(2), adjusted_params(3), adjusted_params(4), adjusted_params(5), adjustment_factor), ...
                 'EdgeColor', 'none', 'FontSize', 10, 'HorizontalAlignment', 'center');
-            
+                
+            set(0,'CurrentFigure',errFig);
+            set(h_error, 'XData', data_V(error_idx), 'YData', errors(error_idx));
+            title(sprintf('拟合误差 (平均: %.2f%%)', avg_error));
+            xlim([-0.5 0.3]);
             drawnow;
         else
             fprintf('无效的选择，请输入0-11之间的数字\n');

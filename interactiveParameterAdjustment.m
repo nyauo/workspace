@@ -56,7 +56,7 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
     
     figure(errFig);
     error_idx = data_V ~= 0;  % 误差计算时忽略零电压点
-    h_error = plot(data_V(error_idx), errors(error_idx), 'b.-');
+    h_error = bar(data_V(error_idx), errors(error_idx));
     xlabel('电压 (V)');
     ylabel('相对误差 (%)');
     title(sprintf('拟合误差 (平均: %.2f%%)', avg_error));
@@ -165,7 +165,7 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
                 'EdgeColor', 'none', 'FontSize', 10, 'HorizontalAlignment', 'center');
                 
             set(0,'CurrentFigure',errFig);
-            set(h_error, 'XData', data_V(error_idx), 'YData', errors(error_idx));
+            set(h_error, 'YData', errors(error_idx));
             title(sprintf('拟合误差 (平均: %.2f%%)', avg_error));
             xlim([-0.5 0.3]);
             drawnow;

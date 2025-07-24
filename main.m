@@ -1,4 +1,8 @@
 function main()
+    scriptDir = fileparts(mfilename('fullpath'));
+    addpath(genpath(fullfile(scriptDir, 'io')));
+    addpath(genpath(fullfile(scriptDir, 'model')));
+    
     % 加载配置和数据
     config = loadConfig();
     % Use fixed tunnelling ideality factor from configuration

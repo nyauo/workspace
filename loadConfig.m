@@ -21,7 +21,8 @@ function config = loadConfig()
         'method', 'multistart', ...
         'target_rel_error', 2, ... % 收敛判据: 平均相对误差 < 2%
         'target_max_error', 5, ...  % 收敛判据: 最大相对误差 < 5%
-        'max_attempts', 3 ...      % 达到阈值前最多重新优化次数
+        'max_attempts', 3, ...     % 达到阈值前最多重新优化次数
+        'max_retries', 2 ...       % 非欧姆比率过高时的最大递归次数
     );
     % Regularization settings for parameter priors
     config.regularization = struct(...

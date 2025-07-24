@@ -53,5 +53,7 @@ The structure `config.optimization` defines stopping criteria for the global fit
   `Inf`).
 - `max_attempts` – number of times `final_optimization` may be retried when the
   thresholds are not met (default `3`).
+- `max_retries` – limit on recursive calls triggered by excessive non-ohmic to
+  ohmic current ratio (default `2`).
 
 `performFitting` only terminates successfully when both conditions are met.

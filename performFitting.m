@@ -159,9 +159,12 @@ function [x0_scaled, rel_errors] = fit_positive_region(data_V, data_JD, x0_scale
     rel_errors = abs((fit_all - data_JD) ./ (abs(data_JD) + eps));    
 end
 
-function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm, attempt)
+function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm, attempt, retry_count)
     if nargin < 7
         attempt = 1;
+    end
+    if nargin < 8
+        retry_count = 0;
     end
     fprintf('\n第三阶段：全区域拟合...\n');
     errFun = @(x) errorFunction(x, data_V, data_JD, params, config, config.regularization.prior);
@@ -321,10 +324,14 @@ end
     if ratio > ratio_threshold
         fprintf(['警告: 非欧姆电流与欧姆电流的平均值比率为 %.2e, 超过阈值 %.0f, ' ...
                 '尝试在收紧k上界后重新拟合...\n'], ratio, ratio_threshold);
-        params.ub(4) = min(params.ub(4), optimized_params(4));
-        [optimized_params, fit_results] = final_optimization(data_V, data_JD, ...
-            optimized_params ./ params.scaleFactors, params, config, options_lm, attempt + 1);
-        relative_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
+        if retry_count < config.optimization.max_retries
+            params.ub(4) = min(params.ub(4), optimized_params(4));
+            [optimized_params, fit_results] = final_optimization(data_V, data_JD, ...
+                optimized_params ./ params.scaleFactors, params, config, options_lm, attempt + 1, retry_count + 1);
+            relative_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
+        else
+            fprintf('达到最大重试次数 %d，停止递归。\n', config.optimization.max_retries);
+        end
     end
 
     neg_idx = find(data_V < -0.1);
@@ -343,7 +350,7 @@ end
         options_lm.MaxIterations = options_lm.MaxIterations * 2;
         options_lm.MaxFunctionEvaluations = options_lm.MaxFunctionEvaluations * 2;
         [optimized_params, fit_results] = final_optimization(data_V, data_JD, ...
-            optimized_params ./ params.scaleFactors, params, config, options_lm, attempt + 1);
+            optimized_params ./ params.scaleFactors, params, config, options_lm, attempt + 1, retry_count);
         relative_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
         max_rel = max(relative_errors);
         avg_rel = mean(relative_errors);

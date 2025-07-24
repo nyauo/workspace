@@ -42,9 +42,11 @@ function saveResults(data_V, data_JD, params, fit_results, currents)
     % 添加误差统计
     fprintf(fid, '拟合误差统计:\n');
     %fprintf(fid, '平均相对误差: %.2f%%\n', mean(rel_errors));
-    avg_rel_error = mean(rel_errors(data_V ~= 0));
+    nz_idx = data_V ~= 0;
+    avg_rel_error = mean(rel_errors(nz_idx));
+    max_rel_error = max(rel_errors(nz_idx));
     fprintf(fid, '平均相对误差: %.2f%%\n', avg_rel_error);
-    fprintf(fid, '最大相对误差: %.2f%%\n', max(rel_errors));
+    fprintf(fid, '最大相对误差: %.2f%%\n', max_rel_error);
     fprintf(fid, '中位相对误差: %.2f%%\n', median(rel_errors));
     
     % 计算不同电压区域的误差

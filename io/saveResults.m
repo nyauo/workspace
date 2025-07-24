@@ -2,18 +2,24 @@ function saveResults(data_V, data_JD, params, fit_results, currents)
     % 生成时间戳
     timestamp = datestr(now, 'yyyymmdd_HHMMSS');
     
+    % 结果保存目录
+    results_dir = 'results';
+    if ~exist(results_dir, 'dir')
+        mkdir(results_dir);
+    end
+
     % 保存数据和拟合结果
-    results_filename = sprintf('fit_results_%s.mat', timestamp);
+    results_filename = fullfile(results_dir, sprintf('fit_results_%s.mat', timestamp));
     save(results_filename, 'data_V', 'data_JD', 'params', 'fit_results', 'currents');
     fprintf('拟合结果已保存到文件: %s\n', results_filename);
     
     % 保存图形
-    fig_filename = sprintf('fit_plot_%s.png', timestamp);
+    fig_filename = fullfile(results_dir, sprintf('fit_plot_%s.png', timestamp));
     saveas(gcf, fig_filename);
     fprintf('拟合图形已保存到文件: %s\n', fig_filename);
     
     % 导出详细数据到CSV
-    csv_filename = sprintf('fit_data_%s.csv', timestamp);
+    csv_filename = fullfile(results_dir, sprintf('fit_data_%s.csv', timestamp));
     fid = fopen(csv_filename, 'w');
        fprintf(fid, 'Voltage(V),Measured_Current(A),Fitted_Current(A),Diode_Current(A),Tunnel_Current(A),Ohmic_Current(A),Nonohmic_Current(A),J02(A),Relative_Error(%%)\n');
     % 计算相对误差
@@ -30,7 +36,7 @@ function saveResults(data_V, data_JD, params, fit_results, currents)
     fprintf('拟合数据已导出到CSV文件: %s\n', csv_filename);
     
     % 导出拟合参数到文本文件
-    params_filename = sprintf('fit_params_%s.txt', timestamp);
+    params_filename = fullfile(results_dir, sprintf('fit_params_%s.txt', timestamp));
     fid = fopen(params_filename, 'w');
     fprintf(fid, '拟合参数:\n');
     fprintf(fid, 'J01 = %.6e A\n', params(1));

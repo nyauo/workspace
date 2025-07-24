@@ -5,6 +5,7 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
     addpath(genpath(fullfile(scriptDir, 'model')));
     addpath(genpath(fullfile(scriptDir, 'plots')));
     addpath(genpath(fullfile(scriptDir, 'utils')));
+    addpath(genpath(fullfile(scriptDir, 'fit')));
     
     % 复制初始参数
     adjusted_params = initial_params;

@@ -2,6 +2,9 @@ function main()
     scriptDir = fileparts(mfilename('fullpath'));
     addpath(genpath(fullfile(scriptDir, 'io')));
     addpath(genpath(fullfile(scriptDir, 'model')));
+    addpath(genpath(fullfile(scriptDir, 'plots')));
+    addpath(genpath(fullfile(scriptDir, 'utils')));
+    addpath(genpath(fullfile(scriptDir, 'fit')));
     
     % 加载配置和数据
     config = loadConfig();

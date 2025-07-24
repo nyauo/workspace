@@ -157,6 +157,11 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
         attempt = attempt + 1;
     end
     
+    if avg_rel < config.optimization.termination_avg_error
+        fprintf('平均误差 %.2f%% 低于阈值，结束优化。\n', avg_rel);
+        break;
+    end
+
     if attempt >= config.optimization.max_attempts && avg_rel >= config.optimization.termination_avg_error
         fprintf('已达到最大尝试次数 %d，仍未达到误差阈值，停止优化。\n', config.optimization.max_attempts);
         break;

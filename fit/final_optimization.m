@@ -4,7 +4,7 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     end
     
     prev_avg_rel = Inf;
-    while true
+    while attempt <= config.optimization.max_attempts
         fprintf('\n第三阶段：全区域拟合...\n');
         errFun = @(x) errorFunction(x, data_V, data_JD, params, config, config.regularization.prior);
         [x_scaled_optimized,resnorm_lm]=runWithMultiStart(errFun,x0_scaled,params.lb./ params.scaleFactors,params.ub ./ params.scaleFactors,options_lm,optcfg);
@@ -142,37 +142,23 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
         fprintf('平均误差 %.2f%% 低于阈值，结束优化。\n', avg_rel);
         break;
     end
-    prev_avg_rel = avg_rel;
-
-    while attempt < config.optimization.max_attempts
-        fprintf('误差未满足阈值，尝试再次优化 (%d/%d)...\n', ...
-            attempt + 1, config.optimization.max_attempts);
-        options_lm.MaxIterations = options_lm.MaxIterations * 2;
-        options_lm.MaxFunctionEvaluations = options_lm.MaxFunctionEvaluations * 2;
-        [optimized_params, fit_results] = final_optimization(data_V, data_JD, ...
-        optimized_params ./ params.scaleFactors, params, config, options_lm, optcfg, attempt + 1);
-        relative_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
-        relative_errors_nz = relative_errors(nz_idx);
-        max_rel = max(relative_errors_nz);
-        avg_rel = mean(relative_errors_nz);
-        if prev_avg_rel - avg_rel < config.optimization.improvement_threshold
-            fprintf('改进不足 %.2f%%，提前停止重试\n', config.optimization.improvement_threshold);
-            break;
-        end
-        prev_avg_rel = avg_rel;
-        attempt = attempt + 1;
-    end
-    
-    if avg_rel < config.optimization.termination_avg_error
-        fprintf('平均误差 %.2f%% 低于阈值，结束优化。\n', avg_rel);
-        break;
-    end
-
-    if attempt >= config.optimization.max_attempts && avg_rel >= config.optimization.termination_avg_error
+    if attempt == config.optimization.max_attempts
         fprintf('已达到最大尝试次数 %d，仍未达到误差阈值，停止优化。\n', config.optimization.max_attempts);
         break;
     end
 
+    if prev_avg_rel - avg_rel < config.optimization.improvement_threshold
+        fprintf('改进不足 %.2f%%，提前停止重试\n', config.optimization.improvement_threshold);
+        break;
+    end
+    
+    prev_avg_rel = avg_rel;
+    attempt = attempt + 1;
+    x0_scaled = optimized_params ./ params.scaleFactors;
+    options_lm.MaxIterations = options_lm.MaxIterations * 2;
+    options_lm.MaxFunctionEvaluations = options_lm.MaxFunctionEvaluations * 2;
+    continue;
+    
     fprintf('最终平均相对误差: %.2f%%\n', avg_rel);
     fprintf('最终最大相对误差: %.2f%%\n', max_rel);
     fprintf('中位相对误差: %.2f%%\n', median(relative_errors_nz));

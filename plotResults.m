@@ -5,14 +5,23 @@ function plotResults(V, JD_measured, fit_results, currents)
     % 第一个子图：I-V特性（对数坐标）及各电流分量
     subplot(2,2,[1,2]);
     
+    % 定义颜色
+    c_data   = [107,174,214]/255; % #6BAED6
+    c_total  = [251,106, 74]/255; % #FB6A4A
+    c_ohmic  = [144,186, 72]/255; % #90BA48
+    c_diode  = [ 19,106,238]/255; % #136AEE
+    c_tunnel = [172,209,230]/255; % #ACD1E6
+    c_nonohm = [223, 66,227]/255; % #DF42E3
+
     % 绘制测量数据和拟合结果
-    semilogy(V, abs(JD_measured), 'bo', 'DisplayName', '测量数据', 'MarkerSize', 6);
+    semilogy(V, abs(JD_measured), 'o', 'Color', c_data, 'DisplayName', '测量数据', 'MarkerSize', 6);
     hold on;
-    semilogy(V, abs(currents.total), 'ro', 'DisplayName', '总拟合电流', 'MarkerSize', 6);
-    semilogy(V, abs(currents.diode), 'b--', 'DisplayName', '二极管电流', 'LineWidth', 1.5);
-        semilogy(V, abs(currents.tunnel), 'c--', 'DisplayName', '隧穿电流', 'LineWidth', 1.5);
-    semilogy(V, abs(currents.ohmic), 'g--', 'DisplayName', '欧姆电流', 'LineWidth', 1.5);
-    semilogy(V, abs(currents.nonohmic), 'm--', 'DisplayName', '非欧姆电流', 'LineWidth', 1.5);
+    semilogy(V, abs(currents.total), 'o', 'Color', c_total, 'DisplayName', '总拟合电流', 'MarkerSize', 6);
+    semilogy(V, abs(currents.diode), '--', 'Color', c_diode, 'DisplayName', '二极管电流', 'LineWidth', 1.5);
+    semilogy(V, abs(currents.tunnel), '--', 'Color', c_tunnel, 'DisplayName', '隧穿电流', 'LineWidth', 1.5);
+    semilogy(V, abs(currents.ohmic), '--', 'Color', c_ohmic, 'DisplayName', '欧姆电流', 'LineWidth', 1.5);
+    semilogy(V, abs(currents.nonohmic), '--', 'Color', c_nonohm, 'DisplayName', '非欧姆电流', 'LineWidth', 1.5);
+    axis square;
     
     % 设置坐标轴
     xlabel('电压 (V)', 'FontSize', 12);
@@ -29,7 +38,7 @@ function plotResults(V, JD_measured, fit_results, currents)
     subplot(2,2,3);
     relative_error = abs((currents.total - JD_measured) ./ (abs(JD_measured) + eps)) * 100;
     nz_idx = V ~= 0;  % 忽略零电压点进行误差计算和绘图
-    plot(V(nz_idx), relative_error(nz_idx), 'b.-', 'LineWidth', 1);
+    bar(V, relative_error, 'FaceColor', c_data, 'EdgeColor', 'none');
     avg_rel_err = mean(relative_error(nz_idx));
     max_rel_err = max(relative_error(nz_idx));
     xlabel('电压 (V)');
@@ -39,9 +48,9 @@ function plotResults(V, JD_measured, fit_results, currents)
     
     % 第三个子图：I-V特性（线性坐标）
     subplot(2,2,4);
-    plot(V, JD_measured, 'bo', 'DisplayName', '测量数据');
+    plot(V, JD_measured, 'Color', c_data, 'LineWidth', 1.5, 'DisplayName', '测量数据');
     hold on;
-    plot(V, currents.total, 'ro', 'DisplayName', '拟合结果');
+    plot(V, currents.total, 'Color', c_total, 'LineWidth', 1.5, 'DisplayName', '拟合结果');
     xlabel('电压 (V)');
     ylabel('电流密度 (A)');
     title('I-V特性曲线（线性坐标）');

@@ -42,7 +42,8 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
     grid on;
     
     subplot(2,1,2);
-    h_error = plot(data_V, errors, 'b.-');
+    error_idx = data_V ~= 0;  % 误差计算时忽略零电压点
+    h_error = plot(data_V(error_idx), errors(error_idx), 'b.-');
     xlabel('电压 (V)');
     ylabel('相对误差 (%)');
     %title(sprintf('拟合误差 (平均: %.2f%%)', mean(errors)));
@@ -140,7 +141,7 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
             set(h_diode, 'YData', abs(currents.diode));
             set(h_tunnel, 'YData', abs(currents.tunnel));
             set(h_ohmic, 'YData', abs(currents.ohmic));
-            set(h_nonohmic, 'YData', abs(currents.nonohmic));
+            set(h_error, 'XData', data_V(error_idx), 'YData', errors(error_idx));
             set(h_error, 'YData', errors);
             %title(subplot(2,1,2), sprintf('拟合误差 (平均: %.2f%%)', mean(errors)));
             title(subplot(2,1,2), sprintf('拟合误差 (平均: %.2f%%)', avg_error));

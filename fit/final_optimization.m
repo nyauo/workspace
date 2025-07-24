@@ -17,7 +17,6 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
         fit_results_lm.JD = diodeModel(data_V, optimized_params_lm, config);
         fit_results_lm.resnorm = resnorm_lm;
         relative_errors_lm = abs((fit_results_lm.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
-        max_err_lm = max(relative_errors_lm);
 
 
 
@@ -43,15 +42,19 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     fit_results_tr.JD = diodeModel(data_V, optimized_params_tr, config);
     fit_results_tr.resnorm = resnorm_tr;
     relative_errors_tr = abs((fit_results_tr.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
-    mean_err_tr = mean(relative_errors_tr);
-    max_err_tr = max(relative_errors_tr);
+    % Index of data points with non-zero voltage to avoid zero-division artefacts
+    nz_idx = data_V ~= 0;
+    mean_err_lm = mean(relative_errors_lm(nz_idx));
+    max_err_lm = max(relative_errors_lm(nz_idx));
+    mean_err_tr = mean(relative_errors_tr(nz_idx));
+    max_err_tr = max(relative_errors_tr(nz_idx));;
 
     
     fprintf('\n比较两种算法的结果：\n');
     fprintf('Levenberg-Marquardt: 平均相对误差 = %.2f%%, 最大相对误差 = %.2f%%\n', ...
-            mean(relative_errors_lm), max(relative_errors_lm));
+            mean_err_lm, max_err_lm);
     fprintf('Trust-Region-Reflective: 平均相对误差 = %.2f%%, 最大相对误差 = %.2f%%\n', ...
-            mean(relative_errors_tr), max(relative_errors_tr));
+            mean_err_tr, max_err_tr);
             
     neg_idx = find(data_V < 0);
     pos_idx = find(data_V > 0);
@@ -61,7 +64,7 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     pos_err_tr = relative_errors_tr(pos_idx);
     fprintf('\nLevenberg-Marquardt: 负区域误差 = %.2f%%, 正区域误差 = %.2f%%\n', mean(neg_err_lm), mean(pos_err_lm));
     fprintf('Trust-Region-Reflective: 负区域误差 = %.2f%%, 正区域误差 = %.2f%%\n', mean(neg_err_tr), mean(pos_err_tr));
-    if mean(relative_errors_lm) < mean(relative_errors_tr)
+    if mean_err_lm < mean_err_tr
         fprintf('整体表现更好: Levenberg-Marquardt算法\n');
         optimized_params = optimized_params_lm;
         fit_results.JD = fit_results_lm.JD;
@@ -89,7 +92,7 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     fit_results.JD = diodeModel(data_V, optimized_params, config);
     fit_results.resnorm = resnorm_final;
     relative_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
-
+    relative_errors_nz = relative_errors(nz_idx);
 
     neg_errors = relative_errors(neg_idx);
     pos_errors = relative_errors(pos_idx);
@@ -110,6 +113,7 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
         optimized_params_enhanced = x_scaled_enhanced .* params.scaleFactors;
         fit_results_enhanced.JD = diodeModel(data_V, optimized_params_enhanced, config);
         relative_errors_enhanced = abs((fit_results_enhanced.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
+        relative_errors_enhanced_nz = relative_errors_enhanced(nz_idx);
         pos_errors_enhanced = relative_errors_enhanced(pos_idx);
         neg_errors_enhanced = relative_errors_enhanced(neg_idx);
         fprintf('增强前: 正区域误差 = %.2f%%, 负区域误差 = %.2f%%\n', mean(pos_errors), mean(neg_errors));
@@ -119,6 +123,7 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
             optimized_params = optimized_params_enhanced;
             fit_results.JD = fit_results_enhanced.JD;
             relative_errors = relative_errors_enhanced;
+            relative_errors_nz = relative_errors_enhanced_nz;
         else
             fprintf('保留原始优化结果\n');
         end
@@ -129,9 +134,9 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     neg_idx = find(data_V < -0.1);
     neg_errors = relative_errors(neg_idx);
     fprintf('\n每个点的相对误差统计：\n');
-    max_rel = max(relative_errors);
+    max_rel = max(relative_errors_nz);
     fprintf('最大相对误差: %.2f%%\n', max_rel);
-    avg_rel = mean(relative_errors);
+    avg_rel = mean(relative_errors_nz);
     fprintf('平均相对误差: %.2f%%\n', avg_rel);
     if avg_rel < config.optimization.termination_avg_error
         fprintf('平均误差 %.2f%% 低于阈值，结束优化。\n', avg_rel);
@@ -147,8 +152,9 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
         [optimized_params, fit_results] = final_optimization(data_V, data_JD, ...
         optimized_params ./ params.scaleFactors, params, config, options_lm, optcfg, attempt + 1);
         relative_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
-        max_rel = max(relative_errors);
-        avg_rel = mean(relative_errors);
+        relative_errors_nz = relative_errors(nz_idx);
+        max_rel = max(relative_errors_nz);
+        avg_rel = mean(relative_errors_nz);
         if prev_avg_rel - avg_rel < config.optimization.improvement_threshold
             fprintf('改进不足 %.2f%%，提前停止重试\n', config.optimization.improvement_threshold);
             break;
@@ -169,7 +175,7 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
 
     fprintf('最终平均相对误差: %.2f%%\n', avg_rel);
     fprintf('最终最大相对误差: %.2f%%\n', max_rel);
-    fprintf('中位相对误差: %.2f%%\n', median(relative_errors));
+    fprintf('中位相对误差: %.2f%%\n', median(relative_errors_nz));
     fprintf('负电压区域平均相对误差: %.2f%%\n', mean(neg_errors));
 
     strong_neg_idx = find(data_V < -0.2 & data_V >= -0.5);
@@ -202,7 +208,9 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
 
 
 % 针对负电压区域的误差函数
-    [max_error, max_error_idx] = max(relative_errors);
+    [max_error, idx_tmp] = max(relative_errors_nz);
+    nz_indices = find(nz_idx);
+    max_error_idx = nz_indices(idx_tmp);
     fprintf('\n误差最大的点：\n');
     fprintf('电压: %.3f V\n', data_V(max_error_idx));
     fprintf('测量电流: %.3e A\n', data_JD(max_error_idx));

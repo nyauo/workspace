@@ -27,14 +27,21 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
     
     % 定义子图结构
     subplot(2,1,1);
-    h_data = semilogy(data_V, abs(data_JD), 'bo', 'DisplayName', '测量数据');
+    c_data   = [107,174,214]/255; % #6BAED6
+    c_total  = [251,106, 74]/255; % #FB6A4A
+    c_ohmic  = [144,186, 72]/255; % #90BA48
+    c_diode  = [ 19,106,238]/255; % #136AEE
+    c_tunnel = [172,209,230]/255; % #ACD1E6
+    c_nonohm = [223, 66,227]/255; % #DF42E3
+
+    h_data = semilogy(data_V, abs(data_JD), 'o', 'Color', c_data, 'DisplayName', '测量数据');
     hold on;
-    %h_fit = semilogy(data_V, abs(fit_results.JD), 'ro', 'DisplayName', '拟合结果');
-    h_fit = semilogy(data_V, abs(currents.total), 'ro', 'DisplayName', '拟合结果');
-    h_diode = semilogy(data_V, abs(currents.diode), 'b--', 'DisplayName', '二极管电流');
-    h_ohmic = semilogy(data_V, abs(currents.ohmic), 'g--', 'DisplayName', '欧姆电流');
-    h_nonohmic = semilogy(data_V, abs(currents.nonohmic), 'm--', 'DisplayName', '非欧姆电流');
-    h_tunnel = semilogy(data_V, abs(currents.tunnel), 'c--', 'DisplayName', '隧穿电流');
+    h_fit = semilogy(data_V, abs(currents.total), 'o', 'Color', c_total, 'DisplayName', '拟合结果');
+    h_diode = semilogy(data_V, abs(currents.diode), '--', 'Color', c_diode, 'DisplayName', '二极管电流');
+    h_tunnel = semilogy(data_V, abs(currents.tunnel), '--', 'Color', c_tunnel, 'DisplayName', '隧穿电流');
+    h_ohmic = semilogy(data_V, abs(currents.ohmic), '--', 'Color', c_ohmic, 'DisplayName', '欧姆电流');
+    h_nonohmic = semilogy(data_V, abs(currents.nonohmic), '--', 'Color', c_nonohm, 'DisplayName', '非欧姆电流');
+    axis square;
     xlabel('电压 (V)');
     ylabel('电流密度 (A)');
     title('电流-电压特性 (对数尺度)');
@@ -143,8 +150,9 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
             set(h_ohmic, 'YData', abs(currents.ohmic));
             set(h_error, 'XData', data_V(error_idx), 'YData', errors(error_idx));
             set(h_error, 'YData', errors);
-            %title(subplot(2,1,2), sprintf('拟合误差 (平均: %.2f%%)', mean(errors)));
+            %title(subplot(2,1,2), sprintf('拟合误差 (平均: %.2f%%)', mean(errors))); 
             title(subplot(2,1,2), sprintf('拟合误差 (平均: %.2f%%)', avg_error));
+            axis(subplot(2,1,1), 'square');
             % 更新参数显示
             delete(findall(gcf, 'Type', 'annotation'));
             annotation('textbox', [0.01, 0.01, 0.98, 0.08], ...

@@ -1,4 +1,7 @@
 function [optimized_params, fit_results] = performFitting(data_V, data_JD, params, config)
+    % 执行分阶段拟合并返回最终参数
+    % 优化结束后会检查欧姆电流与非欧姆电流的平均大小比，
+    % 如果非欧姆分量过大，则给出警告并可再次拟合以收紧k的上界
     try
         % 缩放初始参数
         x0_scaled = params.x0 ./ params.scaleFactors;
@@ -248,6 +251,22 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
             fprintf('保留原始优化结果\n');
         end
 end
+
+    % 计算欧姆与非欧姆电流的平均绝对值并检查其比值
+    % 如果非欧姆电流显著大于欧姆电流，可能表明模型不符合物理约束
+    currents = calculateCurrents(data_V, optimized_params, config);
+    mean_ohmic = mean(abs(currents.ohmic));
+    mean_nonohmic = mean(abs(currents.nonohmic));
+    ratio = mean_nonohmic / (mean_ohmic + eps);
+    ratio_threshold = 1e3;
+    if ratio > ratio_threshold
+        fprintf(['警告: 非欧姆电流与欧姆电流的平均值比率为 %.2e, 超过阈值 %.0f, ' ...
+                '尝试在收紧k上界后重新拟合...\n'], ratio, ratio_threshold);
+        params.ub(4) = min(params.ub(4), optimized_params(4));
+        [optimized_params, fit_results] = final_optimization(data_V, data_JD, ...
+            optimized_params ./ params.scaleFactors, params, config, options_lm);
+        relative_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
+    end
 
     neg_idx = find(data_V < -0.1);
     neg_errors = relative_errors(neg_idx);

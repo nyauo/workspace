@@ -34,7 +34,7 @@ function config = loadConfig()
     
     % Parallel computing options
     config.parallel = struct(...
-        'use', false, ...     % whether to run optimisations in parallel
+        'use', true, ...     % whether to run optimisations in parallel
         'poolSize', [] ...    % optional pool size for parpool
     );
 end

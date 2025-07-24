@@ -1,38 +1,33 @@
 function [data_V, data_JD] = loadData()
-%LOADDATA 从 CSV/XLSX 读取测量数据
-%   [V, JD] = LOADDATA(FILENAME) 从指定文件加载电压和电流密度。如果
-%   未提供 FILENAME，则弹出文件选择对话框。文件应至少包含两列，
-%   第一列为电压，第二列为电流密度。若文件缺失或读取失败，则返
-%   回内置示例数据
+%LOADDATA 选择文件并读取电流数据
+%   [V, JD] = LOADDATA() 弹出对话框让用户选择包含电流密度的文件，
+%   然后询问需要读取的单元格范围(如 A1:A81)。电压向量固定为
+%   -0.5V 至 0.3V，步长 0.01V。如果文件选择被取消或读取失败，
+%   将返回内置示例数据。
 
-    if nargin < 1 || isempty(filename)
-        [file, path] = uigetfile({'*.xlsx;*.xls;*.csv', 'Data files (*.xlsx, *.xls, *.csv)'}, ...
-                                 '选择包含IV数据的文件');
-        if isequal(file, 0)
-            filename = 'example_data.csv';
-        else
-            filename = fullfile(path, file);
-        end
-    end
-    
-    if exist(filename, 'file')
-        try
-                if endsWith(lower(filename), {'.xls', '.xlsx'})
-                range_str = input('请输入读取的单元格范围(留空表示自动): ', 's');
-                if isempty(range_str)
-                    raw = readmatrix(filename);
-                else
-                    raw = readmatrix(filename, 'Range', range_str);
+       [file, path] = uigetfile({'*.xlsx;*.xls;*.csv', 'Data files (*.xlsx, *.xls, *.csv)'}, ...
+                             '选择包含IV数据的文件');
+    if ~isequal(file, 0)
+        filename = fullfile(path, file);
+        range_str = input('请输入电流数据的单元格范围(如A1:A81，留空取消): ', 's');
+        if ~isempty(range_str)
+            try
+                raw = readmatrix(filename, 'Range', range_str);
+                data_JD = raw(:);
+                data_V = (-0.5:0.01:0.3)';
+                if numel(data_JD) ~= numel(data_V)
+                    warning('读取的数据长度(%d)与电压向量长度(%d)不符。', ...
+                            numel(data_JD), numel(data_V));
                 end
-            else
-                raw = readmatrix(filename);
+                return;
+            catch ME
+                warning('读取 %s 失败: %s。使用内置示例数据。', filename, ME.message);
             end
-            data_V = raw(:, 1);
-            data_JD = raw(:, 2);
-            return;
-        catch ME
-            warning('读取 %s 失败: %s。使用内置示例数据。', filename, ME.message);
+        else
+            fprintf('未输入范围，使用内置示例数据。\n');
         end
+        else
+            fprintf('未选择文件，使用内置示例数据。\n');
     end
 
     % 内置示例数据

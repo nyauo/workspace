@@ -96,6 +96,12 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
         end
         
         if choice == 0
+            % Compute currents with the final parameters before saving
+            currents = calculateCurrents(data_V, adjusted_params, config);
+            fit_results.JD = currents.total;
+            % Save results and optionally the adjusted parameters
+            saveResults(data_V, data_JD, adjusted_params, fit_results, currents);
+            saveAdjustedParameters(adjusted_params);
             break;
         elseif choice == 11
             % 调整步长

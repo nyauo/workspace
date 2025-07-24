@@ -25,8 +25,6 @@ function config = loadConfig()
         'termination_avg_error', 5, ...   % 平均误差阈值，低于此值则提前结束
         'm_range', [2, 3], ...     % 调整m的范围
         'm_step', 0.1, ...         % 调整m的步长
-        'n2_range', [2, 8], ...  % 调整n2的范围
-        'n2_step', 0.1 ...         % 调整n2的步长
     );
     % Regularization settings for parameter priors
     config.regularization = struct(...

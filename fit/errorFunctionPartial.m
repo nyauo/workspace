@@ -13,37 +13,26 @@ function err = errorFunctionPartial(x_opt, x0, param_mask, data_V, data_JD, para
     predicted = diodeModel(data_V, x_actual, config);
     
     % 计算误差
+    threshold = 1e-12;
+    max_val = max(1e-12, max(abs(data_JD(:))));
+    actual_abs = abs(data_JD);
+    pred_abs = abs(predicted);
     err = zeros(size(data_JD));
     
-    for i = 1:length(data_JD)
-        actual_abs = abs(data_JD(i));
-        pred_abs = abs(predicted(i));
-        
-        threshold = 1e-12;
-        
-        if actual_abs < threshold || pred_abs < threshold
-            err(i) = (predicted(i) - data_JD(i)) / max(1e-12, max(max(abs(data_JD))));
-        else
-            % 使用对数误差
-            log_actual = log10(actual_abs);
-            log_pred = log10(pred_abs);
-            err(i) = log_pred - log_actual;
-            
-            % 保持符号一致性
-            if sign(predicted(i)) ~= sign(data_JD(i))
-                err(i) = err(i) * 4;
-            end
-        end
-        
+   mask_small = actual_abs < threshold | pred_abs < threshold;
+    err(mask_small) = (predicted(mask_small) - data_JD(mask_small)) / max_val;
 
-        % 根据上一阶段的误差加权，排除零电压附近的点
-        if nargin >= 9 && ~isempty(prev_errors) && abs(data_V(i)) > 0.05
-            w = 1 + abs(prev_errors(i));
-            err(i) = err(i) * w;
-        elseif abs(data_V(i)) > 0.05
-            w = 1 + abs(err(i));
-            err(i) = err(i) * w;
-        end
+    mask_log = ~mask_small;
+    err(mask_log) = log10(pred_abs(mask_log)) - log10(actual_abs(mask_log));
+
+    sign_mismatch = sign(predicted) ~= sign(data_JD);
+    err(sign_mismatch & mask_log) = err(sign_mismatch & mask_log) * 4;
+
+    idx = abs(data_V) > 0.05;
+    if nargin >= 9 && ~isempty(prev_errors)
+        err(idx) = err(idx) .* (1 + abs(prev_errors(idx)));
+    else
+        err(idx) = err(idx) .* (1 + abs(err(idx)));
     end
 
     if nargin < 7 || isempty(prior)

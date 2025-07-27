@@ -198,8 +198,8 @@ classdef diodeFittingApp < matlab.apps.AppBase
 
     methods (Access = public)
         function app = diodeFittingApp()
-            createComponents(app);
             runStartupFcn(app,@startupFcn);
+            createComponents(app);
             if nargout == 0
                 clear app
             end

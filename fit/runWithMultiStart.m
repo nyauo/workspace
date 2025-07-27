@@ -1,4 +1,4 @@
-function [x_best, resnorm_best] = runWithMultiStart(fun, x0, lb, ub, options, optcfg)
+function [x_best, resnorm_best] = runWithMultiStart(fun, x0, lb, ub, options, optcfg, parallel_cfg)
 %RUNWITHMULTISTART  Run lsqnonlin with multiple random starts.
 %   [X_BEST, RESNORM_BEST] = RUNWITHMULTISTART(FUN, X0, LB, UB, OPTIONS, OPTCFG)
 %   attempts to minimize FUN using lsqnonlin starting from several random
@@ -15,6 +15,11 @@ if nargin < 6 || isempty(optcfg)
     optcfg.multistart_points = 1;
     optcfg.method = 'multistart';
 end
+if nargin < 7 || isempty(parallel_cfg)
+    parallel_cfg.use = false;
+else
+    if ~isfield(parallel_cfg, 'use'); parallel_cfg.use = false; end
+end
 if ~isfield(optcfg, 'multistart_points'); optcfg.multistart_points = 1; end
 if ~isfield(optcfg, 'method'); optcfg.method = 'multistart'; end
 
@@ -25,7 +30,7 @@ method = lower(optcfg.method);
 if exist('MultiStart', 'class') && strcmp(method, 'multistart')
     problem = createOptimProblem('lsqnonlin', 'x0', x0, 'lb', lb, 'ub', ub, ...
         'objective', fun, 'options', options);
-    ms = MultiStart('UseParallel', false); %#ok<MSNU>
+    ms = MultiStart('UseParallel', parallel_cfg.use); %#ok<MSNU>
     [x_best, resnorm_best] = run(ms, problem, nStart);
     return;
 end
@@ -52,21 +57,39 @@ end
 x_best = x0;
 resnorm_best = inf;
 noiseScale = 0.1 * (abs(x0) + 1);
-for k = 1:nStart
-    if k == 1
-        start = x0;
-    else
-        start = lb + rand(size(x0)) .* (ub - lb);
-        if isempty(lb) || isempty(ub)
-            start = x0 + randn(size(x0)) .* noiseScale;
+if parallel_cfg.use && nStart > 1
+    x_cand = cell(nStart,1);
+    res_cand = inf(nStart,1);
+    parfor k = 1:nStart
+        if k == 1
+            start = x0;
         else
-            start = lb + rand(size(x0)) .* (ub - lb);
-        end        
+            if isempty(lb) || isempty(ub)
+                start = x0 + randn(size(x0)) .* noiseScale;
+            else
+                start = lb + rand(size(x0)) .* (ub - lb);
+            end
+        end
+        [x_cand{k}, res_cand(k)] = lsqnonlin(fun, start, lb, ub, options);
     end
-    [x_try, resnorm_try] = lsqnonlin(fun, start, lb, ub, options);
-    if resnorm_try < resnorm_best
-        resnorm_best = resnorm_try;
-        x_best = x_try;
+    [resnorm_best, idx] = min(res_cand);
+    x_best = x_cand{idx};
+else
+    for k = 1:nStart
+        if k == 1
+            start = x0;
+        else
+            if isempty(lb) || isempty(ub)
+                start = x0 + randn(size(x0)) .* noiseScale;
+            else
+                start = lb + rand(size(x0)) .* (ub - lb);
+            end
+        end
+        [x_try, resnorm_try] = lsqnonlin(fun, start, lb, ub, options);
+        if resnorm_try < resnorm_best
+            resnorm_best = resnorm_try;
+            x_best = x_try;
+        end
     end
 end
 end

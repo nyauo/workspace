@@ -2,9 +2,9 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(V, JD, 
 %INTERACTIVEPARAMETERADJUSTMENT Command-line wrapper for parameter tweaking.
 %   This routine loops over user choices and calls helper functions to
 %   update the adjustment figures.
-    % Copy initial parameters and set default adjustment step    adjusted_params = initial_params;
-    adjusted_params = initial_params;
-    adjustment_factor = 1.0;
+% Copy initial parameters and set default adjustment step    adjusted_params = initial_params;
+adjusted_params = initial_params;
+adjustment_factor = 1.0;
     
     if adjusted_params(2) <= 0
         fprintf('Warning: initial Rs non-positive, setting to 10.\n');

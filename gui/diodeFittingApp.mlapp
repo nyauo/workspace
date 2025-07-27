@@ -108,7 +108,13 @@ classdef diodeFittingApp < matlab.apps.AppBase
         end
 
         function onLoadData(app)
-            [app.data_V, app.data_JD] = loadData();
+            try
+                app.updateConfigFromFields();
+                [app.data_V, app.data_JD] = loadData(app.VStartEdit.Value, ...
+                    app.VStepEdit.Value, app.VEndEdit.Value);
+            catch ME
+                uialert(app.UIFigure, ME.message, 'Data Error');
+            end
         end
 
         function onLoadParams(app)
@@ -121,7 +127,13 @@ classdef diodeFittingApp < matlab.apps.AppBase
             if isequal(file,0)
                 uialert(app.UIFigure,'No parameter file selected, estimating initial values with Lambert W.','Info');
                 if isempty(app.data_V)
-                    [app.data_V, app.data_JD] = loadData();
+                    try
+                        [app.data_V, app.data_JD] = loadData(app.VStartEdit.Value, ...
+                            app.VStepEdit.Value, app.VEndEdit.Value);
+                    catch ME
+                        uialert(app.UIFigure, ME.message, 'Data Error');
+                        return
+                    end
                 end
                 app.params = initializeParameters(app.data_V, app.data_JD, app.config);
             else
@@ -139,8 +151,15 @@ classdef diodeFittingApp < matlab.apps.AppBase
 
         function onRunFitting(app)
             if isempty(app.data_V)
-                [app.data_V, app.data_JD] = loadData();
+                try
+                    [app.data_V, app.data_JD] = loadData(app.VStartEdit.Value, ...
+                        app.VStepEdit.Value, app.VEndEdit.Value);
+                catch ME
+                    uialert(app.UIFigure, ME.message, 'Data Error');
+                    return
+                end
             end
+            app.updateConfigFromFields();
             validateInputData(app.data_V, app.data_JD);
             if isempty(app.params)
                 app.params = initializeParameters(app.data_V, app.data_JD, app.config);
@@ -156,6 +175,7 @@ classdef diodeFittingApp < matlab.apps.AppBase
                 uialert(app.UIFigure,'Run fitting first.','Info');
                 return
             end
+            app.updateConfigFromFields();
             [app.params, app.fit_results] = interactiveParameterAdjustment( ...
                 app.data_V, app.data_JD, app.params, app.config);
             app.currents = calculateCurrents(app.data_V, app.params, app.config);

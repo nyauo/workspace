@@ -93,9 +93,6 @@ function main()
         saveResults(data_V, data_JD, optimized_params, fit_results, currents);
     end
     
-    % 输出结果
-    displayResults(optimized_params);
-    
     % 询问用户是否满意拟合结果，如果不满意则进入交互式调整模式
     interactive_adjust = input('是否进入交互式参数调整模式? (y/n): ', 's');
     if strcmpi(interactive_adjust, 'y')
@@ -108,8 +105,7 @@ function main()
         figure;
         plotResults(data_V, data_JD, refined_fit, refined_currents);
         
-        % 输出调整后的结果
-        displayResults(refined_params);
+
         
         % 保存调整后的参数
         saveAdjustedParameters(refined_params);

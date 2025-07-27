@@ -24,7 +24,18 @@ function main()
             poolCreated = true;
         end
     end
-    [data_V, data_JD] = loadData();
+    range_str = input('输入电压范围 [start step end] (留空使用默认): ','s');
+    if isempty(range_str)
+        [data_V, data_JD] = loadData();
+    else
+        nums = sscanf(range_str,'%f');
+        if numel(nums) == 3
+            [data_V, data_JD] = loadData(nums(1), nums(2), nums(3));
+        else
+            fprintf('格式错误，使用默认范围\n');
+            [data_V, data_JD] = loadData();
+        end
+    end
     
     % 根据正向数据估计理想因子并覆盖配置
     %n_est = estimateIdealityFactor(data_V, data_JD, config);

@@ -6,7 +6,7 @@ function params = initializeParameters(data_V, data_JD, config)
     % k: 非欧姆系数，对负电压区域的拟合尤为重要
     
     % 使用LambertW函数方法估计初始参数
-    fprintf('使用Lambert W函数估计初始参数...\n');
+    guiLog('使用Lambert W函数估计初始参数...');
     
     % 估计初始Rs值 - 使用正向高电压区域的斜率
     pos_idx = find(data_V > 0.2);
@@ -77,10 +77,10 @@ function params = initializeParameters(data_V, data_JD, config)
     k_est = 5e-7; % 初始值，后续会优化
     
     % 输出估计的参数
-    fprintf('Lambert W估计的参数:\n');
-    fprintf('J0 = %.6e A\n', J0_est);
-    fprintf('Rs = %.6e Ohm\n', Rs_est);
-    fprintf('Rsh = %.6e Ohm\n', Rsh_est);
+    guiLog('Lambert W估计的参数:');
+    guiLog(sprintf('J0 = %.6e A', J0_est));
+    guiLog(sprintf('Rs = %.6e Ohm', Rs_est));
+    guiLog(sprintf('Rsh = %.6e Ohm', Rsh_est));
     
     % 设置参数
     params.x0 = [J0_est, Rs_est, Rsh_est, k_est];

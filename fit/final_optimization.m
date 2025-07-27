@@ -1,13 +1,16 @@
-function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm, attempt, retry_count)
-    if nargin < 7
-        attempt = 1;
+function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm, parallel_cfg, attempt, retry_count)
+    if nargin < 7 || isempty(parallel_cfg)
+        parallel_cfg.use = false;
     end
     if nargin < 8
+            attempt = 1;
+    end
+    if nargin < 9
         retry_count = 0;
     end
     fprintf('\n第三阶段：全区域拟合...\n');
     errFun = @(x) errorFunction(x, data_V, data_JD, params, config, config.regularization.prior);
-    [x_scaled_optimized,resnorm_lm]=runWithMultiStart(errFun,x0_scaled,params.lb./ params.scaleFactors,params.ub ./ params.scaleFactors,options_lm,config.optimization);
+    [x_scaled_optimized,resnorm_lm]=runWithMultiStart(errFun,x0_scaled,params.lb./ params.scaleFactors,params.ub ./ params.scaleFactors,options_lm,config.optimization,parallel_cfg);
     residual_lm = []; exitflag_lm = []; output_lm = [];
     if x_scaled_optimized(2) * params.scaleFactors(2) <= 0
         fprintf('警告: LM算法产生了负值或零的Rs，正在调整为正值\n');
@@ -41,7 +44,7 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
         fprintf('警告: Rs下界为负值或零，已调整为正值\n');
         params.lb(2) = 10;
     end
-    [x_scaled_optimized_tr, resnorm_tr] = runWithMultiStart(errFun, x_scaled_optimized, params.lb ./ params.scaleFactors, params.ub ./ params.scaleFactors, options_tr, config.optimization);
+    [x_scaled_optimized_tr, resnorm_tr] = runWithMultiStart(errFun, x_scaled_optimized, params.lb ./ params.scaleFactors, params.ub ./ params.scaleFactors, options_tr, config.optimization, parallel_cfg);
     residual_tr = []; exitflag_tr = []; output_tr = [];
     if x_scaled_optimized_tr(2) * params.scaleFactors(2) <= 0
         fprintf('警告: TR算法产生了负值或零的Rs，正在调整为正值\n');
@@ -122,7 +125,7 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
         lb_pos = params.lb(param_mask) ./ params.scaleFactors(param_mask);
         ub_pos = params.ub(param_mask) ./ params.scaleFactors(param_mask);
         options_pos = optimoptions('lsqnonlin', 'Display', 'iter-detailed', 'Algorithm', 'levenberg-marquardt', 'FunctionTolerance', 1e-12, 'OptimalityTolerance', 1e-12, 'StepTolerance', 1e-12, 'MaxFunctionEvaluations', 3000, 'MaxIterations', 2000);
-        [x_pos_opt, ~] = runWithMultiStart(pos_errFun, x0_pos_opt, lb_pos, ub_pos, options_pos, config.optimization);
+        [x_pos_opt, ~] = runWithMultiStart(pos_errFun, x0_pos_opt, lb_pos, ub_pos, options_pos, config.optimization, parallel_cfg);
         if x_pos_opt(2) * params.scaleFactors(2) <= 0
             fprintf('警告: 正区域优化产生了负值或零的Rs，正在调整为正值\n');
             x_pos_opt(2) = lb_pos(2);
@@ -165,7 +168,7 @@ end
         if retry_count < config.optimization.max_retries
             params.ub(4) = min(params.ub(4), optimized_params(4));
             [optimized_params, fit_results] = final_optimization(data_V, data_JD, ...
-                optimized_params ./ params.scaleFactors, params, config, options_lm, attempt + 1, retry_count + 1);
+                optimized_params ./ params.scaleFactors, params, config, options_lm, parallel_cfg, attempt + 1, retry_count + 1);
             relative_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
         else
             fprintf('达到最大重试次数 %d，停止递归。\n', config.optimization.max_retries);
@@ -189,7 +192,7 @@ end
         options_lm.MaxIterations = options_lm.MaxIterations * 2;
         options_lm.MaxFunctionEvaluations = options_lm.MaxFunctionEvaluations * 2;
         [optimized_params, fit_results] = final_optimization(data_V, data_JD, ...
-            optimized_params ./ params.scaleFactors, params, config, options_lm, attempt + 1, retry_count);
+            optimized_params ./ params.scaleFactors, params, config, options_lm, parallel_cfg, attempt + 1, retry_count);
         relative_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
         max_rel = max(relative_errors(nz_idx));
         avg_rel = mean(relative_errors(nz_idx));

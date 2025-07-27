@@ -35,7 +35,7 @@ function [optimized_params, fit_results] = performFitting(data_V, data_JD, param
        % 分阶段优化
         [x0_scaled, rel_errors] = fit_negative_region(data_V, data_JD, x0_scaled, params, config, options_lm);
         [x0_scaled, rel_errors] = fit_positive_region(data_V, data_JD, x0_scaled, params, config, options_lm, rel_errors);
-        [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm);
+        [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm, config.parallel);
     catch ME
         error('拟合过程出错: %s', ME.message);
     end

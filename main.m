@@ -13,6 +13,11 @@ function main()
     config = loadConfig();
     [data_V, data_JD] = loadData();
     
+    % 根据正向数据估计理想因子并覆盖配置
+    n_est = estimateIdealityFactor(data_V, data_JD, config);
+    fprintf('估计的理想因子 n = %.3f\n', n_est);
+    config.physics.n = n_est;
+    
     % 验证输入数据
     validateInputData(data_V, data_JD);
     

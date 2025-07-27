@@ -1,17 +1,27 @@
 function plotResults(V, JD_measured, fit_results, currents)
     % 创建图形窗口 - 详细分析
-    figure('Position', [100, 100, 1200, 800]);
+    fitFig = figure('Name','拟合结果','Position',[100 100 600 600]);
+
+    % 绘制 I-V 特性（对数坐标）及各电流分量
+    figure(fitFig);
     
-    % 第一个子图：I-V特性（对数坐标）及各电流分量
-    subplot(2,2,[1,2]);
+    % 定义颜色
+    c_data   = [107,174,214]/255; % #6BAED6
+    c_total  = [251,106, 74]/255; % #FB6A4A
+    c_ohmic  = [144,186, 72]/255; % #90BA48
+    c_diode  = [ 19,106,238]/255; % #136AEE
+    c_nonohm = [223, 66,227]/255; % #DF42E3
     
     % 绘制测量数据和拟合结果
-    semilogy(V, abs(JD_measured), 'bo', 'DisplayName', '测量数据', 'MarkerSize', 6);
+    semilogy(V, abs(JD_measured), 'o', 'Color', c_data, 'DisplayName', '测量数据', 'MarkerSize', 6);
     hold on;
-    semilogy(V, abs(currents.total), 'ro', 'DisplayName', '总拟合电流', 'MarkerSize', 6);
-    semilogy(V, abs(currents.diode), 'b--', 'DisplayName', '二极管电流', 'LineWidth', 1.5);
-    semilogy(V, abs(currents.ohmic), 'g--', 'DisplayName', '欧姆电流', 'LineWidth', 1.5);
-    semilogy(V, abs(currents.nonohmic), 'm--', 'DisplayName', '非欧姆电流', 'LineWidth', 1.5);
+    semilogy(V, abs(currents.total), 'o', 'Color', c_total, 'DisplayName', '总拟合电流', 'MarkerSize', 6);
+    semilogy(V, abs(currents.diode), '--', 'Color', c_diode, 'DisplayName', '二极管电流', 'LineWidth', 1.5);
+    semilogy(V, abs(currents.ohmic), '--', 'Color', c_ohmic, 'DisplayName', '欧姆电流', 'LineWidth', 1.5);
+    semilogy(V, abs(currents.nonohmic), '--', 'Color', c_nonohm, 'DisplayName', '非欧姆电流', 'LineWidth', 1.5);
+    xlim([-0.5 0.3]);
+    ylim([1e-11 1e-3]);
+    axis square;
     
     % 设置坐标轴
     xlabel('电压 (V)', 'FontSize', 12);
@@ -20,9 +30,6 @@ function plotResults(V, JD_measured, fit_results, currents)
     grid on;
     legend('Location', 'best');
     
-    % 设置合适的坐标轴范围
-    xlim([min(V) max(V)]);
-    ylim([min(abs(JD_measured))*0.1 max(abs(JD_measured))*10]);
     
     % 第二个子图：相对误差（线性坐标）
     subplot(2,2,3);

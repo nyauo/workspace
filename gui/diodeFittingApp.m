@@ -16,6 +16,18 @@ classdef diodeFittingApp < matlab.apps.AppBase
         VStartEdit                      matlab.ui.control.NumericEditField
         VStepEdit                       matlab.ui.control.NumericEditField
         VEndEdit                        matlab.ui.control.NumericEditField
+        AdjustPanel                     matlab.ui.container.Panel
+        StepEdit                        matlab.ui.control.NumericEditField
+        StepButton                      matlab.ui.control.Button
+        J0PlusButton                    matlab.ui.control.Button
+        J0MinusButton                   matlab.ui.control.Button
+        RsPlusButton                    matlab.ui.control.Button
+        RsMinusButton                   matlab.ui.control.Button
+        RshPlusButton                   matlab.ui.control.Button
+        RshMinusButton                  matlab.ui.control.Button
+        KPlusButton                     matlab.ui.control.Button
+        KMinusButton                    matlab.ui.control.Button
+        FinishAdjustButton              matlab.ui.control.Button
     end
 
     properties (Access = private)
@@ -25,6 +37,8 @@ classdef diodeFittingApp < matlab.apps.AppBase
         fit_results
         currents
         config
+        AdjustChoice
+        AdjustStep
     end
 
     methods (Access = private)
@@ -75,6 +89,35 @@ classdef diodeFittingApp < matlab.apps.AppBase
             ylabel(app.ResultsAxes,'Current Density (A)');
             app.LogTextArea = uitextarea(gl,'Editable','off');
             guiLog('setHandle', app.LogTextArea);
+            
+            app.AdjustPanel = uipanel(app.UIFigure,'Title','Adjust','Visible','off', ...
+                'Position',[10 10 430 200]);
+            gl2 = uigridlayout(app.AdjustPanel,[6 2]);
+            gl2.RowHeight = {30,30,30,30,30,30};
+            gl2.ColumnWidth = {'1x','1x'};
+            app.StepEdit = uieditfield(gl2,'numeric','Value',1.0);
+            app.StepButton = uibutton(gl2,'Text','Change Step', ...
+                'ButtonPushedFcn',@(s,e)app.onAdjustStep());
+            app.J0PlusButton = uibutton(gl2,'Text','+J0', ...
+                'ButtonPushedFcn',@(s,e)app.onAdjustChoice(1));
+            app.J0MinusButton = uibutton(gl2,'Text','-J0', ...
+                'ButtonPushedFcn',@(s,e)app.onAdjustChoice(2));
+            app.RsPlusButton = uibutton(gl2,'Text','+Rs', ...
+                'ButtonPushedFcn',@(s,e)app.onAdjustChoice(3));
+            app.RsMinusButton = uibutton(gl2,'Text','-Rs', ...
+                'ButtonPushedFcn',@(s,e)app.onAdjustChoice(4));
+            app.RshPlusButton = uibutton(gl2,'Text','+Rsh', ...
+                'ButtonPushedFcn',@(s,e)app.onAdjustChoice(5));
+            app.RshMinusButton = uibutton(gl2,'Text','-Rsh', ...
+                'ButtonPushedFcn',@(s,e)app.onAdjustChoice(6));
+            app.KPlusButton = uibutton(gl2,'Text','+k', ...
+                'ButtonPushedFcn',@(s,e)app.onAdjustChoice(7));
+            app.KMinusButton = uibutton(gl2,'Text','-k', ...
+                'ButtonPushedFcn',@(s,e)app.onAdjustChoice(8));
+            app.FinishAdjustButton = uibutton(gl2,'Text','Finish');
+            app.FinishAdjustButton.Layout.Row = 6;
+            app.FinishAdjustButton.Layout.Column = [1 2];
+            app.FinishAdjustButton.ButtonPushedFcn = @(s,e)app.onAdjustChoice(0);
         end
         function updateConfigFromFields(app)
             app.config.physics.n = app.NEdit.Value;
@@ -176,8 +219,14 @@ classdef diodeFittingApp < matlab.apps.AppBase
                 return
             end
             app.updateConfigFromFields();
+            app.AdjustPanel.Visible = 'on';
+            app.AdjustChoice = NaN;
+            app.AdjustStep = app.StepEdit.Value;
+            callbacks.getChoice = @() app.getAdjustChoice();
+            callbacks.getStep   = @(f) app.getAdjustStep();
             [new_params, app.fit_results] = interactiveParameterAdjustment( ...
-                app.data_V, app.data_JD, app.params.x0, app.config);
+            app.data_V, app.data_JD, app.params.x0, app.config, callbacks);
+            app.AdjustPanel.Visible = 'off';
             app.params.x0 = new_params;
             app.currents = calculateCurrents(app.data_V, app.params.x0, app.config);
             app.plotOnAxes();
@@ -194,6 +243,29 @@ classdef diodeFittingApp < matlab.apps.AppBase
         function onExit(app)
             guiLog('clear');
             delete(app.UIFigure);
+        end
+        
+        function onAdjustChoice(app, val)
+            app.AdjustChoice = val;
+            if val == 9
+                app.AdjustStep = app.StepEdit.Value;
+            end
+            uiresume(app.UIFigure);
+        end
+
+        function onAdjustStep(app)
+            app.AdjustChoice = 9;
+            app.AdjustStep = app.StepEdit.Value;
+            uiresume(app.UIFigure);
+        end
+
+        function choice = getAdjustChoice(app)
+            uiwait(app.UIFigure);
+            choice = app.AdjustChoice;
+        end
+
+        function step = getAdjustStep(app)
+            step = app.AdjustStep;
         end
     end
 

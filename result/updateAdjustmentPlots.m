@@ -21,11 +21,4 @@ function updateAdjustmentPlots(handles, errors, nz_idx, currents, params, factor
     xlim([-0.5 0.3]);
     drawnow;
 end
-    nz_idx = V ~= 0;
-    handles.h_error = bar(V(nz_idx), errors(nz_idx),'FaceColor',c_data,'EdgeColor','none');
-    xlabel('Voltage (V)');
-    ylabel('Relative Error (%)');
-    title('');
-    xlim([-0.5 0.3]);
-    grid on;
-end
+

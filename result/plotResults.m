@@ -30,36 +30,37 @@ function plotResults(V, JD_measured, fit_results, currents)
     grid on;
     legend('Location', 'best');
     
-    
-    % 第二个子图：相对误差（线性坐标）
-    subplot(2,2,3);
+    % Second figure: error and linear I-V
+    errFig = figure('Name','误差与线性I-V','Position',[750 100 600 600]);
+    subplot(2,1,1);
+
     relative_error = abs((currents.total - JD_measured) ./ (abs(JD_measured) + eps)) * 100;
-    plot(V, relative_error, 'b.-', 'LineWidth', 1);
-    avg_rel_err = mean(relative_error(V ~= 0));
+    nz_idx = V ~= 0;  % Ignore zero voltage when computing error
+    bar(V(nz_idx), relative_error(nz_idx), 'FaceColor', c_data, 'EdgeColor', 'none');
+    avg_rel_err = mean(relative_error(nz_idx));
+    max_rel_err = max(relative_error(nz_idx));
     xlabel('电压 (V)');
     ylabel('相对误差 (%)');
     title('拟合相对误差');
+    xlim([-0.5 0.3]);
     grid on;
     
-    % 第三个子图：I-V特性（线性坐标）
-    subplot(2,2,4);
-    plot(V, JD_measured, 'bo', 'DisplayName', '测量数据');
+    subplot(2,1,2);
+    plot(V, JD_measured, 'Color', c_data, 'LineWidth', 1.5, 'DisplayName', '测量数据');
     hold on;
-    plot(V, currents.total, 'ro', 'DisplayName', '拟合结果');
+    plot(V, currents.total, 'Color', c_total, 'LineWidth', 1.5, 'DisplayName', '拟合结果');
     xlabel('电压 (V)');
     ylabel('电流密度 (A)');
     title('I-V特性曲线（线性坐标）');
     grid on;
     legend('Location', 'best');
     
-    % 添加总体信息
-    sgtitle('二极管特性拟合结果分析', 'FontSize', 14);
-    
-    % 在图上添加拟合参数信息
-    annotation('textbox', [0.02, 0.02, 0.4, 0.05], ...
-        'String', sprintf('最大相对误差: %.2f%%  平均相对误差: %.2f%%', ...
-        max(relative_error), avg_rel_err), ...
-        'EdgeColor', 'none');
+    figure(errFig);
+    sgtitle('二极管特性拟合结果分析','FontSize',14);
+
+    annotation(errFig,'textbox',[0.15,0.02,0.7,0.05], ...
+        'String', sprintf('最大相对误差: %.2f%%  平均相对误差: %.2f%%', max_rel_err, avg_rel_err), ...
+        'EdgeColor','none','HorizontalAlignment','center');
     fprintf('二极管电流占比: %.2f%%\n', mean(abs(currents.diode ./ currents.total)) * 100);
     fprintf('欧姆电流占比: %.2f%%\n', mean(abs(currents.ohmic ./ currents.total)) * 100);
     fprintf('非欧姆电流占比: %.2f%%\n', mean(abs(currents.nonohmic ./ currents.total)) * 100);

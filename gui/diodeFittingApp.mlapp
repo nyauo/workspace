@@ -11,6 +11,11 @@ classdef diodeFittingApp < matlab.apps.AppBase
         ExitButton                      matlab.ui.control.Button
         ResultsAxes                     matlab.ui.control.UIAxes
         LogTextArea                     matlab.ui.control.TextArea
+        NEdit                           matlab.ui.control.NumericEditField
+        MEdit                           matlab.ui.control.NumericEditField
+        VStartEdit                      matlab.ui.control.NumericEditField
+        VStepEdit                       matlab.ui.control.NumericEditField
+        VEndEdit                        matlab.ui.control.NumericEditField
     end
 
     properties (Access = private)
@@ -37,9 +42,19 @@ classdef diodeFittingApp < matlab.apps.AppBase
         function createComponents(app)
             app.UIFigure = uifigure('Position',[100 100 450 560], ...
                 'Name','Diode Fitting App');
-            gl = uigridlayout(app.UIFigure,[8 1]);
-            gl.RowHeight = {40,40,40,40,40,40,'1x',80};
+            gl = uigridlayout(app.UIFigure,[12 1]);
+            gl.RowHeight = {30,30,30,30,30,40,40,40,40,40,40,'1x'};
             gl.ColumnWidth = {'1x'};
+            app.NEdit = uieditfield(gl,'numeric','Value',app.config.physics.n, ...
+                'Tooltip','Ideality factor n');
+            app.MEdit = uieditfield(gl,'numeric','Value',app.config.physics.m, ...
+                'Tooltip','Exponent m');
+            app.VStartEdit = uieditfield(gl,'numeric','Value',-0.5, ...
+                'Tooltip','Voltage start');
+            app.VStepEdit  = uieditfield(gl,'numeric','Value',0.01, ...
+                'Tooltip','Voltage step');
+            app.VEndEdit   = uieditfield(gl,'numeric','Value',0.3, ...
+                'Tooltip','Voltage end');
 
             app.LoadDataButton = uibutton(gl,'Text','Load Data', ...
                 'ButtonPushedFcn',@(src,event)app.onLoadData());
@@ -61,7 +76,10 @@ classdef diodeFittingApp < matlab.apps.AppBase
             app.LogTextArea = uitextarea(gl,'Editable','off');
             guiLog('setHandle', app.LogTextArea);
         end
-
+        function updateConfigFromFields(app)
+            app.config.physics.n = app.NEdit.Value;
+            app.config.physics.m = app.MEdit.Value;
+        end
         function plotOnAxes(app)
             if isempty(app.data_V) || isempty(app.currents)
                 cla(app.ResultsAxes);

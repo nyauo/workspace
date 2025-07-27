@@ -28,5 +28,10 @@ function config = loadConfig()
     config.regularization = struct(...
         'lambda', 0, ...                % penalty strength
         'prior', [0, 0, 0, 0] ...       % prior parameter values
-    );    
+    );   
+    % Parallel computing options
+    config.parallel = struct(...
+        'use', true, ...     % whether to run optimisations in parallel
+        'poolSize', [] ...    % optional pool size for parpool
+    );
 end

@@ -61,7 +61,11 @@ function plotResults(V, JD_measured, fit_results, currents)
     annotation(errFig,'textbox',[0.15,0.02,0.7,0.05], ...
         'String', sprintf('最大相对误差: %.2f%%  平均相对误差: %.2f%%', max_rel_err, avg_rel_err), ...
         'EdgeColor','none','HorizontalAlignment','center');
-    fprintf('二极管电流占比: %.2f%%\n', mean(abs(currents.diode ./ currents.total)) * 100);
-    fprintf('欧姆电流占比: %.2f%%\n', mean(abs(currents.ohmic ./ currents.total)) * 100);
-    fprintf('非欧姆电流占比: %.2f%%\n', mean(abs(currents.nonohmic ./ currents.total)) * 100);
+    nz = currents.total ~= 0;
+    diode_ratio   = mean(abs(currents.diode(nz)   ./ currents.total(nz))) * 100;
+    ohmic_ratio   = mean(abs(currents.ohmic(nz)   ./ currents.total(nz))) * 100;
+    nonohm_ratio  = mean(abs(currents.nonohmic(nz) ./ currents.total(nz))) * 100;
+    fprintf('二极管电流占比: %.2f%%\n', diode_ratio);
+    fprintf('欧姆电流占比: %.2f%%\n', ohmic_ratio);
+    fprintf('非欧姆电流占比: %.2f%%\n', nonohm_ratio);
 end

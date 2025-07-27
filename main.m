@@ -11,6 +11,19 @@ function main()
     
     % 加载配置和数据
     config = loadConfig();
+    % Setup parallel pool if requested
+    poolCreated = false;
+    if isfield(config, 'parallel') && config.parallel.use
+        poolobj = gcp('nocreate');
+        if isempty(poolobj)
+            if ~isempty(config.parallel.poolSize)
+                parpool(config.parallel.poolSize);
+            else
+                parpool();
+            end
+            poolCreated = true;
+        end
+    end
     [data_V, data_JD] = loadData();
     
     % 根据正向数据估计理想因子并覆盖配置
@@ -114,6 +127,12 @@ function main()
         
         % 保存调整后的参数
         saveAdjustedParameters(refined_params);
+    end
+    if poolCreated
+        poolobj = gcp('nocreate');
+        if ~isempty(poolobj)
+            delete(poolobj);
+        end
     end
 end
 

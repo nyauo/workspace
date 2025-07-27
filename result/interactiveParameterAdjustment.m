@@ -53,8 +53,9 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
 
     % Error plot
     figure(errFig);
-    error_idx = data_V ~= 0;
-    h_error = bar(data_V(error_idx), errors(error_idx));
+    nz_idx = data_V ~= 0;
+    h_error = bar(data_V(nz_idx), errors(nz_idx), ...
+                  'FaceColor', c_data, 'EdgeColor', 'none');
     xlabel('电压 (V)');
     ylabel('相对误差 (%)');
     title(sprintf('拟合误差 (平均: %.2f%%)', avg_error));
@@ -63,8 +64,8 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
     
     % Parameter display and initial update
     updatePlots(fitFig, errFig, h_fit, h_diode, h_ohmic, h_nonohmic, h_error, ...
-        errors, error_idx, currents, adjusted_params, adjustment_factor, avg_error);
-    
+        errors, nz_idx, currents, adjusted_params, adjustment_factor, avg_error);
+        
     % 持续调整直到用户满意
     while true
         % 显示调整选项
@@ -109,7 +110,7 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
               [adjusted_params, currents, errors, avg_error] = applyAdjustment(...
                 choice, adjusted_params, adjustment_factor, data_V, data_JD, config, nz_idx);
             updatePlots(fitFig, errFig, h_fit, h_diode, h_ohmic, h_nonohmic, ...
-                h_error, errors, error_idx, currents, adjusted_params, ...
+                h_error, errors, nz_idx, currents, adjusted_params, ...
                 adjustment_factor, avg_error);
         else
             fprintf('无效的选择，请输入0-9之间的数字\n');
@@ -129,7 +130,7 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
     fit_results.resnorm = sum(((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)).^2);
 end
 function updatePlots(fitFig, errFig, h_fit, h_diode, h_ohmic, h_nonohmic, h_error, ...
-    errors, error_idx, currents, params, factor, avg_err)
+    errors, nz_idx, currents, params, factor, avg_err)
     % Update the plot lines and annotation text.
     set(0,'CurrentFigure',fitFig);
     set(h_fit,      'YData', abs(currents.total));
@@ -146,7 +147,7 @@ function updatePlots(fitFig, errFig, h_fit, h_diode, h_ohmic, h_nonohmic, h_erro
         'EdgeColor','none','FontSize',10,'HorizontalAlignment','center');
 
     set(0,'CurrentFigure',errFig);
-    set(h_error,'YData',errors(error_idx));
+    set(h_error,'YData',errors(nz_idx));
     title(sprintf('拟合误差 (平均: %.2f%%)', avg_err));
     xlim([-0.5 0.3]);
     drawnow;

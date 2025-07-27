@@ -232,14 +232,16 @@ end
             fprintf('高正电压区域(>0.25V)平均相对误差: %.2f%%\n', mean(high_pos_errors));
         end
     end
-
-    [max_error, max_error_idx] = max(relative_errors);
+    
+    nz_idx = data_V ~= 0;
+    [max_error, max_error_idx] = max(relative_errors(nz_idx));
+    data_V_nz = data_V(nz_idx);
+    data_JD_nz = data_JD(nz_idx);
+    fit_JD_nz = fit_results.JD(nz_idx);
     fprintf('\n误差最大的点：\n');
-    [max_error, max_error_idx] = max(relative_errors);
-    fprintf('\n误差最大的点：\n');
-    fprintf('电压: %.3f V\n', data_V(max_error_idx));
-    fprintf('测量电流: %.3e A\n', data_JD(max_error_idx));
-    fprintf('拟合电流: %.3e A\n', fit_results.JD(max_error_idx));
+    fprintf('电压: %.3f V\n', data_V_nz(max_error_idx));
+    fprintf('测量电流: %.3e A\n', data_JD_nz(max_error_idx));
+    fprintf('拟合电流: %.3e A\n', fit_JD_nz(max_error_idx));
     fprintf('相对误差: %.2f%%\n', max_error);
 
     fprintf('\n拟合参数：\n');

@@ -1,4 +1,8 @@
 function main()
+    scriptDir = fileparts(mfilename('fullpath'));
+    addpath(genpath(fullfile(scriptDir, 'io')));
+    addpath(genpath(fullfile(scriptDir, 'result')));
+    addpath(genpath(fullfile(scriptDir, 'fit')));
     % 加载配置和数据
     config = loadConfig();
     [data_V, data_JD] = loadData();

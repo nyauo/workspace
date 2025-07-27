@@ -53,10 +53,9 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     relative_errors_tr = abs((fit_results_tr.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
     mean_err_tr = mean(relative_errors_tr);
     max_err_tr = max(relative_errors_tr);
-    max_err_tr = max(relative_errors_tr);
     if mean(relative_errors_tr) < config.optimization.target_rel_error && ...
             max_err_tr < config.optimization.target_max_error
-        fprintf('平均相对误差 %.2f%%, 最大相对误差 %.2f%% 已满足收敛标准\n', mean(relative_errors_tr), max_err_tr);
+        fprintf('平均相对误差 %.2f%%, 最大相对误差 %.2f%% 已满足收敛标准\n', mean_err_tr, max_err_tr);
         optimized_params = optimized_params_tr;
         fit_results = fit_results_tr;
         return;
@@ -66,7 +65,7 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     fprintf('Levenberg-Marquardt: 平均相对误差 = %.2f%%, 最大相对误差 = %.2f%%\n', ...
             mean(relative_errors_lm), max(relative_errors_lm));
     fprintf('Trust-Region-Reflective: 平均相对误差 = %.2f%%, 最大相对误差 = %.2f%%\n', ...
-            mean(relative_errors_tr), max(relative_errors_tr));
+            mean_err_tr, max(relative_errors_tr));
             
     neg_idx = find(data_V < 0);
     pos_idx = find(data_V > 0);

@@ -176,9 +176,10 @@ end
     neg_idx = find(data_V < -0.1);
     neg_errors = relative_errors(neg_idx);
     fprintf('\n每个点的相对误差统计：\n');
-    max_rel = max(relative_errors);
+    nz_idx = data_V ~= 0;
+    max_rel = max(relative_errors(nz_idx));
     fprintf('最大相对误差: %.2f%%\n', max_rel);
-    avg_rel = mean(relative_errors);
+    avg_rel = mean(relative_errors(nz_idx));
     fprintf('平均相对误差: %.2f%%\n', avg_rel);
 
     while (avg_rel >= config.optimization.target_rel_error || ...
@@ -191,8 +192,8 @@ end
         [optimized_params, fit_results] = final_optimization(data_V, data_JD, ...
             optimized_params ./ params.scaleFactors, params, config, options_lm, attempt + 1, retry_count);
         relative_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
-        max_rel = max(relative_errors);
-        avg_rel = mean(relative_errors);
+        max_rel = max(relative_errors(nz_idx));
+        avg_rel = mean(relative_errors(nz_idx));
         attempt = attempt + 1;
     end
     

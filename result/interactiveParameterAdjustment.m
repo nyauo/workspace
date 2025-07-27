@@ -1,5 +1,10 @@
 function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V, data_JD, initial_params, config)
-    % 复制初始参数
+    %INTERACTIVEPARAMETERADJUSTMENT Manually tweak model parameters.
+    %   [ADJUSTED_PARAMS, FIT_RESULTS] = INTERACTIVEPARAMETERADJUSTMENT(V, JD,
+    %   INITIAL_PARAMS, CONFIG) opens an interactive loop that allows the user
+    %   to adjust parameters and immediately see the effect on the fit.
+
+    % Copy initial parameters and set default adjustment step
     adjusted_params = initial_params;
     adjustment_factor = 1.0;
     
@@ -56,12 +61,9 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
     xlim([-0.5 0.3]);
     grid on;
     
-    % Parameter display
-    set(0,'CurrentFigure',fitFig);
-    annotation('textbox', [0.01, 0.01, 0.98, 0.08], ...
-        'String', sprintf('J0: %.2e A   Rs: %.2e Ohm   Rsh: %.2e Ohm   k: %.2e   调整步长: %.2f', ...
-        adjusted_params(1), adjusted_params(2), adjusted_params(3), adjusted_params(4), adjustment_factor), ...
-        'EdgeColor', 'none', 'FontSize', 10, 'HorizontalAlignment', 'center');
+    % Parameter display and initial update
+    updatePlots(fitFig, errFig, h_fit, h_diode, h_ohmic, h_nonohmic, h_error, ...
+        errors, error_idx, currents, adjusted_params, adjustment_factor, avg_error);
     
     % 持续调整直到用户满意
     while true
@@ -104,67 +106,11 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
             end
             continue;
         elseif choice >= 1 && choice <= 8
-            % 确定要调整的参数索引
-            param_idx = ceil(choice / 2);
-            
-            % 确定调整方向
-            if mod(choice, 2) == 1
-                direction = 1;
-            else
-                direction = -1;
-            end
-            
-            % 计算调整量
-            delta = adjusted_params(param_idx) * 0.1 * adjustment_factor * direction;
-            
-            % 更新参数
-            adjusted_params(param_idx) = adjusted_params(param_idx) + delta;
-            
-            % 确保参数在合理范围内
-            if param_idx == 1 % J0
-                adjusted_params(param_idx) = max(1e-12, adjusted_params(param_idx));
-            elseif param_idx == 2 % Rs - 特别强调必须为正值
-                adjusted_params(param_idx) = max(1, adjusted_params(param_idx));
-                if adjusted_params(param_idx) <= 0
-                    fprintf('警告: Rs不能为负值或零。已调整为正值。\n');
-                    adjusted_params(param_idx) = 1; % 确保为正值
-                end
-            elseif param_idx == 3 % Rsh
-                adjusted_params(param_idx) = max(1e4, adjusted_params(param_idx));
-            elseif param_idx == 4 % k
-                adjusted_params(param_idx) = max(1e-10, adjusted_params(param_idx));
-            end
-            
-            % 重新计算拟合和误差
-            %fit_results.JD = diodeModel(data_V, adjusted_params, config);
-            currents = calculateCurrents(data_V, adjusted_params, config);
-            fit_results.JD = currents.total;
-            errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
-            
-            avg_error = mean(errors(nz_idx));
-
-            % 更新图表
-            set(0,'CurrentFigure',fitFig);
-            %set(h_fit, 'YData', abs(fit_results.JD));
-            set(h_fit, 'YData', abs(currents.total));
-            set(h_diode, 'YData', abs(currents.diode));
-            set(h_ohmic, 'YData', abs(currents.ohmic));
-            set(h_nonohmic, 'YData', abs(currents.nonohmic));
-            xlim([-0.5 0.3]);
-            ylim([1e-11 1e-3]);
-            axis square;
-            delete(findall(gcf, 'Type', 'annotation'));
-            annotation('textbox', [0.01, 0.01, 0.98, 0.08], ...
-                'String', sprintf('J0: %.2e A   Rs: %.2e Ohm   Rsh: %.2e Ohm   k: %.2e   调整步长: %.2f', ...
-                adjusted_params(1), adjusted_params(2), adjusted_params(3), adjusted_params(4), adjustment_factor), ...
-                'EdgeColor', 'none', 'FontSize', 10, 'HorizontalAlignment', 'center');
-                
-            set(0,'CurrentFigure',errFig);
-            set(h_error, 'YData', errors(error_idx));
-            title(sprintf('拟合误差 (平均: %.2f%%)', avg_error));
-            xlim([-0.5 0.3]);
-            
-            drawnow;
+              [adjusted_params, currents, errors, avg_error] = applyAdjustment(...
+                choice, adjusted_params, adjustment_factor, data_V, data_JD, config, nz_idx);
+            updatePlots(fitFig, errFig, h_fit, h_diode, h_ohmic, h_nonohmic, ...
+                h_error, errors, error_idx, currents, adjusted_params, ...
+                adjustment_factor, avg_error);
         else
             fprintf('无效的选择，请输入0-9之间的数字\n');
         end
@@ -181,4 +127,60 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
     final_currents = calculateCurrents(data_V, adjusted_params, config);
     fit_results.JD = final_currents.total;
     fit_results.resnorm = sum(((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)).^2);
+end
+function updatePlots(fitFig, errFig, h_fit, h_diode, h_ohmic, h_nonohmic, h_error, ...
+    errors, error_idx, currents, params, factor, avg_err)
+    % Update the plot lines and annotation text.
+    set(0,'CurrentFigure',fitFig);
+    set(h_fit,      'YData', abs(currents.total));
+    set(h_diode,    'YData', abs(currents.diode));
+    set(h_ohmic,    'YData', abs(currents.ohmic));
+    set(h_nonohmic, 'YData', abs(currents.nonohmic));
+    xlim([-0.5 0.3]);
+    ylim([1e-11 1e-3]);
+    axis square;
+    delete(findall(fitFig,'Type','annotation'));
+    annotation('textbox',[0.01,0.01,0.98,0.08], ...
+        'String',sprintf('J0: %.2e A   Rs: %.2e Ohm   Rsh: %.2e Ohm   k: %.2e   调整步长: %.2f', ...
+        params(1),params(2),params(3),params(4),factor), ...
+        'EdgeColor','none','FontSize',10,'HorizontalAlignment','center');
+
+    set(0,'CurrentFigure',errFig);
+    set(h_error,'YData',errors(error_idx));
+    title(sprintf('拟合误差 (平均: %.2f%%)', avg_err));
+    xlim([-0.5 0.3]);
+    drawnow;
+end
+
+function [params, currents, errors, avg_err] = applyAdjustment(choice, params, factor, data_V, data_JD, config, nz_idx)
+    % Apply the user adjustment to parameters and recalc currents/errors.
+    param_idx = ceil(choice/2);
+    if mod(choice,2)==1
+        direction = 1;
+    else
+        direction = -1;
+    end
+
+    delta = params(param_idx) * 0.1 * factor * direction;
+    params(param_idx) = params(param_idx) + delta;
+
+    % Enforce reasonable bounds
+    if param_idx == 1
+        params(param_idx) = max(1e-12, params(param_idx));
+    elseif param_idx == 2
+        params(param_idx) = max(1, params(param_idx));
+        if params(param_idx) <= 0
+            fprintf('警告: Rs不能为负值或零。已调整为正值。\n');
+            params(param_idx) = 1;
+        end
+    elseif param_idx == 3
+        params(param_idx) = max(1e4, params(param_idx));
+    elseif param_idx == 4
+        params(param_idx) = max(1e-10, params(param_idx));
+    end
+
+    currents = calculateCurrents(data_V, params, config);
+    fit_JD = currents.total;
+    errors = abs((fit_JD - data_JD) ./ (abs(data_JD)+eps)) * 100;
+    avg_err = mean(errors(nz_idx));
 end

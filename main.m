@@ -3,6 +3,12 @@ function main()
     addpath(genpath(fullfile(scriptDir, 'io')));
     addpath(genpath(fullfile(scriptDir, 'result')));
     addpath(genpath(fullfile(scriptDir, 'fit')));
+    
+    outputDir = 'outputs';
+    if ~exist(outputDir, 'dir')
+        mkdir(outputDir);
+    end
+    
     % 加载配置和数据
     config = loadConfig();
     [data_V, data_JD] = loadData();
@@ -14,8 +20,8 @@ function main()
     use_history = input('是否使用历史参数文件作为初始参数? (y/n): ', 's');
     if strcmpi(use_history, 'y')
         % 列出可用的参数文件
-        mat_files = dir('adjusted_params_*.mat');
-        txt_files = dir('adjusted_params_*.txt');
+        mat_files = dir(fullfile(outputDir, 'adjusted_params_*.mat'));
+        txt_files = dir(fullfile(outputDir, 'adjusted_params_*.txt'));
         
         if isempty(mat_files)
             fprintf('未找到历史参数文件，将使用Lambert W函数估计初始参数\n');
@@ -31,7 +37,7 @@ function main()
             file_idx = input('请选择要加载的文件编号(输入0取消): ');
             if file_idx > 0 && file_idx <= length(mat_files)
                 % 加载选定的文件
-                load_file = mat_files(file_idx).name;
+                load_file = fullfile(outputDir, mat_files(file_idx).name);
                 loaded_data = load(load_file);
                 
                 % 提取参数

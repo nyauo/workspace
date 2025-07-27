@@ -1,4 +1,11 @@
-function [x0_scaled, rel_errors] = fit_negative_region(data_V, data_JD, x0_scaled, params, config, options_lm)
+function [x0_scaled, rel_errors] = fit_negative_region(data_V, data_JD, x0_scaled, params, config, options_lm, logger)
+    if nargin < 7
+        logger = [];
+    end
+    if ~isempty(logger)
+        guiLog('setHandle', logger);
+    end
+    guiLog('\n第一阶段：优化Rsh和非欧姆系数k...');
     fprintf('\n第一阶段：优化Rsh和非欧姆系数k...\n');
     neg_idx = find(data_V < -0.1);
     if ~isempty(neg_idx)
@@ -19,6 +26,10 @@ function [x0_scaled, rel_errors] = fit_negative_region(data_V, data_JD, x0_scale
             mean(neg_rel_errors), max(neg_rel_errors));
         fprintf('优化后的Rsh = %.6e Ohm\n', x_actual_neg(3));
         fprintf('优化后的k = %.6e\n', x_actual_neg(4));
+        guiLog(sprintf('负电压区域拟合：平均相对误差 = %.2f%%, 最大相对误差 = %.2f%%', ...
+            mean(neg_rel_errors), max(neg_rel_errors)));
+        guiLog(sprintf('优化后的Rsh = %.6e Ohm', x_actual_neg(3)));
+        guiLog(sprintf('优化后的k = %.6e', x_actual_neg(4)));
     end
     % 计算整个数据集的相对误差供下一阶段使用
     x_all = x0_scaled .* params.scaleFactors;

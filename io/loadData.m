@@ -16,18 +16,18 @@ function [data_V, data_JD] = loadData()
                 data_JD = raw(:);
                 data_V = (-0.5:0.01:0.3)';
                 if numel(data_JD) ~= numel(data_V)
-                    warning('读取的数据长度(%d)与电压向量长度(%d)不符。', ...
-                            numel(data_JD), numel(data_V));
+                    guiLog(sprintf('读取的数据长度(%d)与电压向量长度(%d)不符。', ...
+                            numel(data_JD), numel(data_V)));
                 end
                 return;
             catch ME
-                warning('读取 %s 失败: %s。使用内置示例数据。', filename, ME.message);
+                guiLog(sprintf('读取 %s 失败: %s。使用内置示例数据。', filename, ME.message));
             end
         else
-            fprintf('未输入范围，使用内置示例数据。\n');
+            guiLog('未输入范围，使用内置示例数据。');
         end
         else
-            fprintf('未选择文件，使用内置示例数据。\n');
+            guiLog('未选择文件，使用内置示例数据。');
     end
 
     % 内置示例数据

@@ -176,9 +176,10 @@ classdef diodeFittingApp < matlab.apps.AppBase
                 return
             end
             app.updateConfigFromFields();
-            [app.params, app.fit_results] = interactiveParameterAdjustment( ...
-                app.data_V, app.data_JD, app.params, app.config);
-            app.currents = calculateCurrents(app.data_V, app.params, app.config);
+            [new_params, app.fit_results] = interactiveParameterAdjustment( ...
+                app.data_V, app.data_JD, app.params.x0, app.config);
+            app.params.x0 = new_params;
+            app.currents = calculateCurrents(app.data_V, app.params.x0, app.config);
             app.plotOnAxes();
         end
 

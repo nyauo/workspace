@@ -233,10 +233,9 @@ end
         end
     end
 
-
-    [max_error, idx_tmp] = max(relative_errors_nz);
-    nz_indices = find(nz_idx);
-    max_error_idx = nz_indices(idx_tmp);
+    [max_error, max_error_idx] = max(relative_errors);
+    fprintf('\n误差最大的点：\n');
+    [max_error, max_error_idx] = max(relative_errors);
     fprintf('\n误差最大的点：\n');
     fprintf('电压: %.3f V\n', data_V(max_error_idx));
     fprintf('测量电流: %.3e A\n', data_JD(max_error_idx));

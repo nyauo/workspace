@@ -17,33 +17,47 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
     nz_idx = data_V ~= 0;
     avg_error = mean(errors(nz_idx));
 
-    % 创建实时更新的图表
-    figure('Name', '交互式参数调整', 'Position', [100, 100, 1200, 800]);
-    
-    % 定义子图结构
-    subplot(2,1,1);
-    h_data = semilogy(data_V, abs(data_JD), 'bo', 'DisplayName', '测量数据');
+    % Create figures
+    fitFig = figure('Name','拟合结果','Position',[100 100 600 600]);
+    errFig = figure('Name','误差分析','Position',[750 100 600 400]);
+
+    % Colours
+    figure(fitFig);
+    c_data   = [107,174,214]/255; % #6BAED6
+    c_total  = [251,106, 74]/255; % #FB6A4A
+    c_ohmic  = [144,186, 72]/255; % #90BA48
+    c_diode  = [ 19,106,238]/255; % #136AEE
+    c_nonohm = [223, 66,227]/255; % #DF42E3
+
+    % Semilog I-V plot
+    h_data = semilogy(data_V, abs(data_JD), 'o', 'Color', c_data, 'DisplayName', '测量数据');
     hold on;
-    %h_fit = semilogy(data_V, abs(fit_results.JD), 'ro', 'DisplayName', '拟合结果');
-    h_fit = semilogy(data_V, abs(currents.total), 'ro', 'DisplayName', '拟合结果');
-    h_diode = semilogy(data_V, abs(currents.diode), 'b--', 'DisplayName', '二极管电流');
-    h_ohmic = semilogy(data_V, abs(currents.ohmic), 'g--', 'DisplayName', '欧姆电流');
-    h_nonohmic = semilogy(data_V, abs(currents.nonohmic), 'm--', 'DisplayName', '非欧姆电流');
+    h_fit = semilogy(data_V, abs(currents.total), 'o', 'Color', c_total, 'DisplayName', '拟合结果');
+    h_diode = semilogy(data_V, abs(currents.diode), '--', 'Color', c_diode, 'DisplayName', '二极管电流');
+    h_ohmic = semilogy(data_V, abs(currents.ohmic), '--', 'Color', c_ohmic, 'DisplayName', '欧姆电流');
+    h_nonohmic = semilogy(data_V, abs(currents.nonohmic), '--', 'Color', c_nonohm, 'DisplayName', '非欧姆电流');
+    xlim([-0.5 0.3]);
+    ylim([1e-11 1e-3]);
+    axis square;
     xlabel('电压 (V)');
     ylabel('电流密度 (A)');
     title('电流-电压特性 (对数尺度)');
     legend('Location', 'best');
     grid on;
     
-    subplot(2,1,2);
-    h_error = plot(data_V, errors, 'b.-');
+
+    % Error plot
+    figure(errFig);
+    error_idx = data_V ~= 0;
+    h_error = bar(data_V(error_idx), errors(error_idx));
     xlabel('电压 (V)');
     ylabel('相对误差 (%)');
-    %title(sprintf('拟合误差 (平均: %.2f%%)', mean(errors)));
     title(sprintf('拟合误差 (平均: %.2f%%)', avg_error));
+    xlim([-0.5 0.3]);
     grid on;
     
-    % 显示当前参数值
+    % Parameter display
+    set(0,'CurrentFigure',fitFig);
     annotation('textbox', [0.01, 0.01, 0.98, 0.08], ...
         'String', sprintf('J0: %.2e A   Rs: %.2e Ohm   Rsh: %.2e Ohm   k: %.2e   调整步长: %.2f', ...
         adjusted_params(1), adjusted_params(2), adjusted_params(3), adjusted_params(4), adjustment_factor), ...
@@ -74,6 +88,10 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
         end
         
         if choice == 0
+            currents = calculateCurrents(data_V, adjusted_params, config);
+            fit_results.JD = currents.total;
+            saveResults(data_V, data_JD, adjusted_params, fit_results, currents);
+            saveAdjustedParameters(adjusted_params);
             break;
         elseif choice == 9
             % 调整步长
@@ -126,20 +144,25 @@ function [adjusted_params, fit_results] = interactiveParameterAdjustment(data_V,
             avg_error = mean(errors(nz_idx));
 
             % 更新图表
+            set(0,'CurrentFigure',fitFig);
             %set(h_fit, 'YData', abs(fit_results.JD));
             set(h_fit, 'YData', abs(currents.total));
             set(h_diode, 'YData', abs(currents.diode));
             set(h_ohmic, 'YData', abs(currents.ohmic));
             set(h_nonohmic, 'YData', abs(currents.nonohmic));
-            set(h_error, 'YData', errors);
-            %title(subplot(2,1,2), sprintf('拟合误差 (平均: %.2f%%)', mean(errors)));
-            title(subplot(2,1,2), sprintf('拟合误差 (平均: %.2f%%)', avg_error));
-            % 更新参数显示
+            xlim([-0.5 0.3]);
+            ylim([1e-11 1e-3]);
+            axis square;
             delete(findall(gcf, 'Type', 'annotation'));
             annotation('textbox', [0.01, 0.01, 0.98, 0.08], ...
                 'String', sprintf('J0: %.2e A   Rs: %.2e Ohm   Rsh: %.2e Ohm   k: %.2e   调整步长: %.2f', ...
                 adjusted_params(1), adjusted_params(2), adjusted_params(3), adjusted_params(4), adjustment_factor), ...
                 'EdgeColor', 'none', 'FontSize', 10, 'HorizontalAlignment', 'center');
+                
+            set(0,'CurrentFigure',errFig);
+            set(h_error, 'YData', errors(error_idx));
+            title(sprintf('拟合误差 (平均: %.2f%%)', avg_error));
+            xlim([-0.5 0.3]);
             
             drawnow;
         else

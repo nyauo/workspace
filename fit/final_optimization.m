@@ -234,19 +234,18 @@ end
     end
 
 
-% 针对负电压区域的误差函数
-    [max_error, max_error_idx] = max(relative_errors);
+    [max_error, idx_tmp] = max(relative_errors_nz);
+    nz_indices = find(nz_idx);
+    max_error_idx = nz_indices(idx_tmp);
     fprintf('\n误差最大的点：\n');
-    [max_error, max_error_idx] = max(relative_errors);
-    fprintf(''\n误差最大的点：\n'');
-    fprintf(''电压: %.3f V\n'', data_V(max_error_idx));
-    fprintf(''测量电流: %.3e A\n'', data_JD(max_error_idx));
-    fprintf(''拟合电流: %.3e A\n'', fit_results.JD(max_error_idx));
-    fprintf(''相对误差: %.2f%%\n'', max_error);
+    fprintf('电压: %.3f V\n', data_V(max_error_idx));
+    fprintf('测量电流: %.3e A\n', data_JD(max_error_idx));
+    fprintf('拟合电流: %.3e A\n', fit_results.JD(max_error_idx));
+    fprintf('相对误差: %.2f%%\n', max_error);
 
-    fprintf(''\n拟合参数：\n'');
-    fprintf(''J0 = %.6e A\n'', optimized_params(1));
-    fprintf(''Rs = %.6e Ohm\n'', optimized_params(2));
-    fprintf(''Rsh = %.6e Ohm\n'', optimized_params(3));
-    fprintf(''k = %.6e\n'', optimized_params(4));
+    fprintf('\n拟合参数：\n');
+    fprintf('J01 = %.6e A\n', optimized_params(1));
+    fprintf('Rs  = %.6e Ohm\n', optimized_params(2));
+    fprintf('Rsh = %.6e A\n', optimized_params(3));
+    fprintf('k   = %.6e\n', optimized_params(4));
 end

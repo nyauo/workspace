@@ -3,22 +3,23 @@ function [optimized_params, fit_results] = performFitting(data_V, data_JD, param
         % 缩放初始参数
         x0_scaled = params.x0 ./ params.scaleFactors;
         
-        % 打印初始参数
-        fprintf('\n初始参数（使用Lambert W函数估计）：\n');
-        fprintf('J0 = %.6e A\n', params.x0(1));
-        fprintf('Rs = %.6e Ohm\n', params.x0(2));
-        fprintf('Rsh = %.6e Ohm\n', params.x0(3));
-        fprintf('k = %.6e\n', params.x0(4));
+        guiLog('');
+        guiLog('初始参数（使用Lambert W函数估计）：');
+        guiLog(sprintf('J0 = %.6e A', params.x0(1)));
+        guiLog(sprintf('Rs = %.6e Ohm', params.x0(2)));
+        guiLog(sprintf('Rsh = %.6e Ohm', params.x0(3)));
+        guiLog(sprintf('k = %.6e', params.x0(4)));
         
         % 确保参数物理合理性
         if params.x0(2) <= 0  % Rs必须为正
-            fprintf('警告: 初始Rs为负值或零，已自动调整为正值\n');
+            guiLog('警告: 初始Rs为负值或零，已自动调整为正值');
             params.x0(2) = max(params.lb(2), abs(params.x0(2)));
             x0_scaled = params.x0 ./ params.scaleFactors;
         end
         
         % 设置优化选项 - 尝试不同的算法
-        fprintf('\n开始使用levenberg-marquardt算法进行拟合...\n');
+        guiLog('');
+        guiLog('开始使用levenberg-marquardt算法进行拟合...');
         options_lm = optimoptions('lsqnonlin', ...
             'Display', 'iter-detailed', ...
             'Algorithm', 'levenberg-marquardt', ...
@@ -37,6 +38,7 @@ function [optimized_params, fit_results] = performFitting(data_V, data_JD, param
         [x0_scaled, rel_errors] = fit_positive_region(data_V, data_JD, x0_scaled, params, config, options_lm, rel_errors);
         [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm, config.parallel);
     catch ME
-        error('拟合过程出错: %s', ME.message);
+        guiLog(sprintf('拟合过程出错: %s', ME.message));
+        rethrow(ME);
     end
 end

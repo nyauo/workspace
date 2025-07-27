@@ -1,4 +1,4 @@
-function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm, parallel_cfg, attempt, retry_count)
+function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x0_scaled, params, config, options_lm, parallel_cfg, attempt, retry_count, logger)
     if nargin < 7 || isempty(parallel_cfg)
         parallel_cfg.use = false;
     end
@@ -8,12 +8,19 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     if nargin < 9
         retry_count = 0;
     end
-    fprintf('\n第三阶段：全区域拟合...\n');
+    if nargin < 10
+        logger = [];
+    end
+    if ~isempty(logger)
+        guiLog('setHandle', logger);
+    end
+    guiLog('\n第三阶段：全区域拟合...');
     errFun = @(x) errorFunction(x, data_V, data_JD, params, config, config.regularization.prior);
     [x_scaled_optimized,resnorm_lm]=runWithMultiStart(errFun,x0_scaled,params.lb./ params.scaleFactors,params.ub ./ params.scaleFactors,options_lm,config.optimization,parallel_cfg);
     residual_lm = []; exitflag_lm = []; output_lm = [];
     if x_scaled_optimized(2) * params.scaleFactors(2) <= 0
         fprintf('警告: LM算法产生了负值或零的Rs，正在调整为正值\n');
+        guiLog('警告: LM算法产生了负值或零的Rs，正在调整为正值');
         x_scaled_optimized(2) = params.lb(2) / params.scaleFactors(2);
     end
     optimized_params_lm = x_scaled_optimized .* params.scaleFactors;
@@ -24,12 +31,14 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     if mean(relative_errors_lm) < config.optimization.target_rel_error && ...
             max_err_lm < config.optimization.target_max_error
         fprintf('平均相对误差 %.2f%%, 最大相对误差 %.2f%% 已满足收敛标准\n', mean(relative_errors_lm), max_err_lm);
+        guiLog(sprintf('平均相对误差 %.2f%%, 最大相对误差 %.2f%% 已满足收敛标准', mean(relative_errors_lm), max_err_lm));
         optimized_params = optimized_params_lm;
         fit_results = fit_results_lm;
         return;
     end
 
     fprintf('\n第四阶段：使用trust-region-reflective算法进行拟合...\n');
+    guiLog('\n第四阶段：使用trust-region-reflective算法进行拟合...');
     options_tr = optimoptions('lsqnonlin', ...
         'Display', 'iter-detailed', ...
         'Algorithm', 'trust-region-reflective', ...
@@ -42,12 +51,14 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
         'MaxIterations', 4000);
     if params.lb(2) <= 0
         fprintf('警告: Rs下界为负值或零，已调整为正值\n');
+        guiLog('警告: Rs下界为负值或零，已调整为正值');
         params.lb(2) = 10;
     end
     [x_scaled_optimized_tr, resnorm_tr] = runWithMultiStart(errFun, x_scaled_optimized, params.lb ./ params.scaleFactors, params.ub ./ params.scaleFactors, options_tr, config.optimization, parallel_cfg);
     residual_tr = []; exitflag_tr = []; output_tr = [];
     if x_scaled_optimized_tr(2) * params.scaleFactors(2) <= 0
         fprintf('警告: TR算法产生了负值或零的Rs，正在调整为正值\n');
+        guiLog('警告: TR算法产生了负值或零的Rs，正在调整为正值');
         x_scaled_optimized_tr(2) = params.lb(2) / params.scaleFactors(2);
     end
     optimized_params_tr = x_scaled_optimized_tr .* params.scaleFactors;
@@ -59,6 +70,7 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     if mean(relative_errors_tr) < config.optimization.target_rel_error && ...
             max_err_tr < config.optimization.target_max_error
         fprintf('平均相对误差 %.2f%%, 最大相对误差 %.2f%% 已满足收敛标准\n', mean_err_tr, max_err_tr);
+        guiLog(sprintf('平均相对误差 %.2f%%, 最大相对误差 %.2f%% 已满足收敛标准', mean_err_tr, max_err_tr));
         optimized_params = optimized_params_tr;
         fit_results = fit_results_tr;
         return;
@@ -69,7 +81,11 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
             mean(relative_errors_lm), max(relative_errors_lm));
     fprintf('Trust-Region-Reflective: 平均相对误差 = %.2f%%, 最大相对误差 = %.2f%%\n', ...
             mean_err_tr, max(relative_errors_tr));
-            
+    guiLog('\n比较两种算法的结果:');
+    guiLog(sprintf('Levenberg-Marquardt: 平均相对误差 = %.2f%%, 最大相对误差 = %.2f%%', ...
+            mean(relative_errors_lm), max(relative_errors_lm)));
+    guiLog(sprintf('Trust-Region-Reflective: 平均相对误差 = %.2f%%, 最大相对误差 = %.2f%%', ...
+            mean_err_tr, max(relative_errors_tr)));
     neg_idx = find(data_V < 0);
     pos_idx = find(data_V > 0);
     neg_err_lm = relative_errors_lm(neg_idx);
@@ -78,8 +94,11 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     pos_err_tr = relative_errors_tr(pos_idx);
     fprintf('\nLevenberg-Marquardt: 负区域误差 = %.2f%%, 正区域误差 = %.2f%%\n', mean(neg_err_lm), mean(pos_err_lm));
     fprintf('Trust-Region-Reflective: 负区域误差 = %.2f%%, 正区域误差 = %.2f%%\n', mean(neg_err_tr), mean(pos_err_tr));
+    guiLog(sprintf('Levenberg-Marquardt: 负区域误差 = %.2f%%, 正区域误差 = %.2f%%', mean(neg_err_lm), mean(pos_err_lm)));
+    guiLog(sprintf('Trust-Region-Reflective: 负区域误差 = %.2f%%, 正区域误差 = %.2f%%', mean(neg_err_tr), mean(pos_err_tr)));
     if mean(relative_errors_lm) < mean(relative_errors_tr)
         fprintf('整体表现更好: Levenberg-Marquardt算法\n');
+        guiLog('整体表现更好: Levenberg-Marquardt算法');
         optimized_params = optimized_params_lm;
         fit_results.JD = fit_results_lm.JD;
         fit_results.resnorm = resnorm_lm;
@@ -89,6 +108,7 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
         relative_errors = relative_errors_lm;
     else
         fprintf('整体表现更好: Trust-Region-Reflective算法\n');
+        guiLog('整体表现更好: Trust-Region-Reflective算法');
         optimized_params = optimized_params_tr;
         fit_results.JD = fit_results_tr.JD;
         fit_results.resnorm = resnorm_tr;
@@ -100,6 +120,7 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
 
     if optimized_params(2) <= 0
         fprintf('警告: 最终拟合结果中Rs为负值或零，已调整为正值\n');
+        guiLog('警告: 最终拟合结果中Rs为负值或零，已调整为正值');
         optimized_params(2) = max(params.lb(2), 10);
         fit_results.JD = diodeModel(data_V, optimized_params, config);
         relative_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
@@ -119,6 +140,7 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
     pos_errors = relative_errors(pos_idx);
     if mean(pos_errors) > 2*mean(neg_errors) && mean(pos_errors) > 10
         fprintf('\n正区域拟合效果较差，尝试单独优化正区域参数...\n');
+        guiLog('\n正区域拟合效果较差，尝试单独优化正区域参数...');
         param_mask = [true, true, false, false];
         pos_errFun = @(x_opt) errorFunction(x_opt, data_V, data_JD, params, config, config.regularization.prior, param_mask, optimized_params ./ params.scaleFactors, relative_errors, 4);
         x0_pos_opt = optimized_params(param_mask) ./ params.scaleFactors(param_mask);
@@ -128,6 +150,7 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
         [x_pos_opt, ~] = runWithMultiStart(pos_errFun, x0_pos_opt, lb_pos, ub_pos, options_pos, config.optimization, parallel_cfg);
         if x_pos_opt(2) * params.scaleFactors(2) <= 0
             fprintf('警告: 正区域优化产生了负值或零的Rs，正在调整为正值\n');
+            guiLog('警告: 正区域优化产生了负值或零的Rs，正在调整为正值');
             x_pos_opt(2) = lb_pos(2);
         end
         
@@ -140,13 +163,17 @@ function [optimized_params, fit_results] = final_optimization(data_V, data_JD, x
         neg_errors_enhanced = relative_errors_enhanced(neg_idx);
         fprintf('增强前: 正区域误差 = %.2f%%, 负区域误差 = %.2f%%\n', mean(pos_errors), mean(neg_errors));
         fprintf('增强后: 正区域误差 = %.2f%%, 负区域误差 = %.2f%%\n', mean(pos_errors_enhanced), mean(neg_errors_enhanced));
+        guiLog(sprintf('增强前: 正区域误差 = %.2f%%, 负区域误差 = %.2f%%', mean(pos_errors), mean(neg_errors)));
+        guiLog(sprintf('增强后: 正区域误差 = %.2f%%, 负区域误差 = %.2f%%', mean(pos_errors_enhanced), mean(neg_errors_enhanced)));
         if mean(pos_errors_enhanced) < mean(pos_errors) && mean(neg_errors_enhanced) < 2*mean(neg_errors)
             fprintf('采用增强优化的结果\n');
+            guiLog('采用增强优化的结果');
             optimized_params = optimized_params_enhanced;
             fit_results.JD = fit_results_enhanced.JD;
             relative_errors = relative_errors_enhanced;
         else
             fprintf('保留原始优化结果\n');
+            guiLog('保留原始优化结果');
         end
 end
 
@@ -165,34 +192,41 @@ end
     if ratio > ratio_threshold
         fprintf(['警告: 非欧姆电流与欧姆电流的平均值比率为 %.2e, 超过阈值 %.0f, ' ...
                 '尝试在收紧k上界后重新拟合...\n'], ratio, ratio_threshold);
+        guiLog(sprintf('警告: 非欧姆电流与欧姆电流的平均值比率为 %.2e, 超过阈值 %.0f, 尝试在收紧k上界后重新拟合...', ratio, ratio_threshold));
         if retry_count < config.optimization.max_retries
             params.ub(4) = min(params.ub(4), optimized_params(4));
             [optimized_params, fit_results] = final_optimization(data_V, data_JD, ...
-                optimized_params ./ params.scaleFactors, params, config, options_lm, parallel_cfg, attempt + 1, retry_count + 1);
+            optimized_params ./ params.scaleFactors, params, config, options_lm, parallel_cfg, attempt + 1, retry_count + 1, logger);
             relative_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
         else
             fprintf('达到最大重试次数 %d，停止递归。\n', config.optimization.max_retries);
+            guiLog(sprintf('达到最大重试次数 %d，停止递归。', config.optimization.max_retries));
         end
     end
 
     neg_idx = find(data_V < -0.1);
     neg_errors = relative_errors(neg_idx);
     fprintf('\n每个点的相对误差统计：\n');
+    guiLog('\n每个点的相对误差统计:');
     nz_idx = data_V ~= 0;
     max_rel = max(relative_errors(nz_idx));
     fprintf('最大相对误差: %.2f%%\n', max_rel);
+    guiLog(sprintf('最大相对误差: %.2f%%', max_rel));
     avg_rel = mean(relative_errors(nz_idx));
     fprintf('平均相对误差: %.2f%%\n', avg_rel);
+    guiLog(sprintf('平均相对误差: %.2f%%', avg_rel));
 
     while (avg_rel >= config.optimization.target_rel_error || ...
-           max_rel >= config.optimization.target_max_error) && ...
-           attempt < config.optimization.max_attempts
+        max_rel >= config.optimization.target_max_error) && ...
+        attempt < config.optimization.max_attempts
         fprintf('误差未满足阈值，尝试再次优化 (%d/%d)...\n', ...
-            attempt + 1, config.optimization.max_attempts);
+        attempt + 1, config.optimization.max_attempts);
+        guiLog(sprintf('误差未满足阈值，尝试再次优化 (%d/%d)...', ...
+        attempt + 1, config.optimization.max_attempts));
         options_lm.MaxIterations = options_lm.MaxIterations * 2;
         options_lm.MaxFunctionEvaluations = options_lm.MaxFunctionEvaluations * 2;
         [optimized_params, fit_results] = final_optimization(data_V, data_JD, ...
-            optimized_params ./ params.scaleFactors, params, config, options_lm, parallel_cfg, attempt + 1, retry_count);
+        optimized_params ./ params.scaleFactors, params, config, options_lm, parallel_cfg, attempt + 1, retry_count, logger);
         relative_errors = abs((fit_results.JD - data_JD) ./ (abs(data_JD) + eps)) * 100;
         max_rel = max(relative_errors(nz_idx));
         avg_rel = mean(relative_errors(nz_idx));
@@ -202,37 +236,47 @@ end
     if avg_rel < config.optimization.target_rel_error && ...
             max_rel < config.optimization.target_max_error
         fprintf('结果满足收敛标准 %.2f%% / %.2f%%\n', config.optimization.target_rel_error, config.optimization.target_max_error);
+        guiLog(sprintf('结果满足收敛标准 %.2f%% / %.2f%%', config.optimization.target_rel_error, config.optimization.target_max_error));
         else
         fprintf('未能达到收敛标准 %.2f%% / %.2f%%\n', config.optimization.target_rel_error, config.optimization.target_max_error);
+        guiLog(sprintf('未能达到收敛标准 %.2f%% / %.2f%%', config.optimization.target_rel_error, config.optimization.target_max_error));
     end
     fprintf('中位相对误差: %.2f%%\n', median(relative_errors));
     fprintf('负电压区域平均相对误差: %.2f%%\n', mean(neg_errors));
+    guiLog(sprintf('中位相对误差: %.2f%%', median(relative_errors)));
+    guiLog(sprintf('负电压区域平均相对误差: %.2f%%', mean(neg_errors)));
 
     strong_neg_idx = find(data_V < -0.2 & data_V >= -0.5);
     if ~isempty(strong_neg_idx)
         strong_neg_errors = relative_errors(strong_neg_idx);
         fprintf('强负电压区域(-0.5到-0.2V)平均相对误差: %.2f%%\n', mean(strong_neg_errors));
+        guiLog(sprintf('强负电压区域(-0.5到-0.2V)平均相对误差: %.2f%%', mean(strong_neg_errors)));
     end
 
     pos_idx = find(data_V > 0);
     if ~isempty(pos_idx)
         pos_errors = relative_errors(pos_idx);
         fprintf('正电压区域平均相对误差: %.2f%%\n', mean(pos_errors));
+        guiLog(sprintf('正电压区域平均相对误差: %.2f%%', mean(pos_errors)));
         low_pos_idx = find(data_V > 0 & data_V <= 0.15);
         mid_pos_idx = find(data_V > 0.15 & data_V <= 0.25);
         high_pos_idx = find(data_V > 0.25);
         if ~isempty(low_pos_idx)
             low_pos_errors = relative_errors(low_pos_idx);
             fprintf('低正电压区域(0-0.15V)平均相对误差: %.2f%%\n', mean(low_pos_errors));
+            guiLog(sprintf('低正电压区域(0-0.15V)平均相对误差: %.2f%%', mean(low_pos_errors)));
         end
         if ~isempty(mid_pos_idx)
             mid_pos_errors = relative_errors(mid_pos_idx);
             fprintf('中正电压区域(0.15-0.25V)平均相对误差: %.2f%%\n', mean(mid_pos_errors));
+            guiLog(sprintf('中正电压区域(0.15-0.25V)平均相对误差: %.2f%%', mean(mid_pos_errors)));
+            
         end
         
         if ~isempty(high_pos_idx)
             high_pos_errors = relative_errors(high_pos_idx);
             fprintf('高正电压区域(>0.25V)平均相对误差: %.2f%%\n', mean(high_pos_errors));
+            guiLog(sprintf('高正电压区域(>0.25V)平均相对误差: %.2f%%', mean(high_pos_errors)));
         end
     end
     
@@ -246,10 +290,20 @@ end
     fprintf('测量电流: %.3e A\n', data_JD_nz(max_error_idx));
     fprintf('拟合电流: %.3e A\n', fit_JD_nz(max_error_idx));
     fprintf('相对误差: %.2f%%\n', max_error);
+    guiLog('\n误差最大的点:');
+    guiLog(sprintf('电压: %.3f V', data_V_nz(max_error_idx)));
+    guiLog(sprintf('测量电流: %.3e A', data_JD_nz(max_error_idx)));
+    guiLog(sprintf('拟合电流: %.3e A', fit_JD_nz(max_error_idx)));
+    guiLog(sprintf('相对误差: %.2f%%', max_error));
 
     fprintf('\n拟合参数：\n');
     fprintf('J01 = %.6e A\n', optimized_params(1));
     fprintf('Rs  = %.6e Ohm\n', optimized_params(2));
     fprintf('Rsh = %.6e A\n', optimized_params(3));
     fprintf('k   = %.6e\n', optimized_params(4));
+    guiLog('\n拟合参数:');
+    guiLog(sprintf('J01 = %.6e A', optimized_params(1)));
+    guiLog(sprintf('Rs  = %.6e Ohm', optimized_params(2)));
+    guiLog(sprintf('Rsh = %.6e A', optimized_params(3)));
+    guiLog(sprintf('k   = %.6e', optimized_params(4)));
 end

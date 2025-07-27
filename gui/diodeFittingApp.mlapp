@@ -10,6 +10,7 @@ classdef diodeFittingApp < matlab.apps.AppBase
         SaveResultsButton               matlab.ui.control.Button
         ExitButton                      matlab.ui.control.Button
         ResultsAxes                     matlab.ui.control.UIAxes
+        LogTextArea                     matlab.ui.control.TextArea
     end
 
     properties (Access = private)
@@ -34,10 +35,10 @@ classdef diodeFittingApp < matlab.apps.AppBase
         end
 
         function createComponents(app)
-            app.UIFigure = uifigure('Position',[100 100 450 500], ...
+            app.UIFigure = uifigure('Position',[100 100 450 560], ...
                 'Name','Diode Fitting App');
-            gl = uigridlayout(app.UIFigure,[7 1]);
-            gl.RowHeight = {40,40,40,40,40,40,'1x'};
+            gl = uigridlayout(app.UIFigure,[8 1]);
+            gl.RowHeight = {40,40,40,40,40,40,'1x',80};
             gl.ColumnWidth = {'1x'};
 
             app.LoadDataButton = uibutton(gl,'Text','Load Data', ...
@@ -57,6 +58,8 @@ classdef diodeFittingApp < matlab.apps.AppBase
             title(app.ResultsAxes,'Results');
             xlabel(app.ResultsAxes,'Voltage (V)');
             ylabel(app.ResultsAxes,'Current Density (A)');
+            app.LogTextArea = uitextarea(gl,'Editable','off');
+            guiLog('setHandle', app.LogTextArea);
         end
 
         function plotOnAxes(app)
@@ -150,6 +153,7 @@ classdef diodeFittingApp < matlab.apps.AppBase
         end
 
         function onExit(app)
+            guiLog('clear');
             delete(app.UIFigure);
         end
     end
